@@ -475,17 +475,6 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- PROMPT MODAL -->
-<div class="modal-overlay" id="promptModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Claude へのプロンプト</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-pre" id="promptText"></div>
-    <button class="modal-copy-btn" onclick="copyPrompt()">クリップボードにコピー</button>
-  </div>
-</div>
 
 <!-- HEADER -->
 <header>
@@ -638,9 +627,6 @@
           <div class="macro c"><div class="macro-val" id="meal-c-breakfast">—g</div><div class="macro-label">C</div></div>
         </div>
         <div class="meal-dishes" id="meal-dishes-breakfast"></div>
-        <label class="meal-add-btn">
-          <input type="file" accept="image/*" onchange="handlePhotoUpload(event,'breakfast')"> 📷 写真を追加
-        </label>
       </div>
       <div class="meal-card" id="meal-card-lunch">
         <div class="meal-header" style="border-bottom:1px solid #1e2130">
@@ -653,9 +639,6 @@
           <div class="macro c"><div class="macro-val" id="meal-c-lunch">—g</div><div class="macro-label">C</div></div>
         </div>
         <div class="meal-dishes" id="meal-dishes-lunch"></div>
-        <label class="meal-add-btn">
-          <input type="file" accept="image/*" onchange="handlePhotoUpload(event,'lunch')"> 📷 写真を追加
-        </label>
       </div>
       <div class="meal-card" id="meal-card-dinner">
         <div class="meal-header" style="border-bottom:1px solid #1e2130">
@@ -668,9 +651,6 @@
           <div class="macro c"><div class="macro-val" id="meal-c-dinner">—g</div><div class="macro-label">C</div></div>
         </div>
         <div class="meal-dishes" id="meal-dishes-dinner"></div>
-        <label class="meal-add-btn">
-          <input type="file" accept="image/*" onchange="handlePhotoUpload(event,'dinner')"> 📷 写真を追加
-        </label>
       </div>
     </div>
 
@@ -800,23 +780,7 @@
   <!-- ===== SETTINGS PAGE ===== -->
   <div class="page" id="page-settings">
 
-    <div class="section-title">Claude API 設定</div>
-    <div class="form-section">
-      <div class="form-title">🔑 API キー</div>
-      <p style="font-size:.78rem;color:#8892a4;line-height:1.6;margin-bottom:12px">
-        APIキーを設定するとブラウザから直接Claude AIによる分析が可能になります。<br>
-        キーはlocalStorageに保存されます（第三者には送信されません）。
-      </p>
-      <div class="form-group api-key-form">
-        <label class="form-label">Anthropic API Key</label>
-        <input class="form-input" type="password" id="in-apikey" placeholder="sk-ant-...">
-      </div>
-      <div id="api-status-badge"></div>
-      <button class="save-btn" onclick="saveApiKey()">保存</button>
-      <button class="save-btn" style="background:#2a1a1a;border-color:#5a2020;color:#ef4444;margin-top:6px" onclick="clearApiKey()">APIキーを削除</button>
-    </div>
-
-    <div class="section-title">プロフィール設定</div>
+<div class="section-title">プロフィール設定</div>
     <div class="form-section">
       <div class="form-title">👤 基本情報</div>
       <div class="form-grid">
@@ -907,7 +871,6 @@ function getProfile() {
     notes: '禁酒7年・禁煙17年継続中'
   }));
 }
-function getApiKey() { return localStorage.getItem('claudeApiKey') || ''; }
 
 /* ============================================================
    DATE NAV
@@ -946,7 +909,6 @@ function renderAll() {
   renderMeals();
   renderStreak();
   renderInputForm();
-  updateApiStatusBadge();
   loadMemos();
 }
 
@@ -1268,371 +1230,11 @@ function saveDailyData() {
 /* ============================================================
    PHOTO UPLOAD (Nutrition Analysis)
    ============================================================ */
-async function handlePhotoUpload(event, mealKey) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64 = e.target.result.split(',')[1];
-    const mimeType = file.type;
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      showNutritionPromptForMeal(mealKey, base64, mimeType);
-      return;
-    }
-    await analyzePhotoWithClaude(mealKey, base64, mimeType, apiKey);
-  };
-  reader.readAsDataURL(file);
-}
 
-async function analyzePhotoWithClaude(mealKey, base64, mimeType, apiKey) {
-  showToast('AIが解析中...');
-  const prompt = `あなたは50代男性の健康管理をサポートする栄養・フィットネス専門家です。
-食事の写真を見て、以下をJSON形式のみで返してください。
-マークダウンや説明文は不要です。
-
-{
-  "dishes": [
-    {
-      "name": "料理名",
-      "amount_g": 推定グラム数,
-      "calories": カロリー,
-      "protein": タンパク質,
-      "fat": 脂質,
-      "carbs": 炭水化物,
-      "fiber": 食物繊維,
-      "salt": 塩分,
-      "confidence": "high/medium/low"
-    }
-  ],
-  "total": {
-    "calories": 合計カロリー,
-    "protein": 合計タンパク質,
-    "fat": 合計脂質,
-    "carbs": 合計炭水化物,
-    "fiber": 合計食物繊維,
-    "salt": 合計塩分
-  },
-  "note": "推定の補足"
-}`;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-            { type: 'text', text: prompt }
-          ]
-        }]
-      })
-    });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error.message);
-    const text = json.content[0].text;
-    const parsed = JSON.parse(text);
-    // Save to meal data
-    const mealData = {
-      calories: parsed.total.calories,
-      protein: parsed.total.protein,
-      fat: parsed.total.fat,
-      carbs: parsed.total.carbs,
-      fiber: parsed.total.fiber,
-      salt: parsed.total.salt,
-      dishes: parsed.dishes
-    };
-    const existing = getTodayData(currentDate);
-    const update = {};
-    update[mealKey] = mealData;
-    saveTodayData(currentDate, update);
-    // Show result
-    el('ai-nutrition-result').innerHTML = `
-      <div class="ai-section">
-        <div class="ai-section-title">解析結果（${mealKey === 'breakfast' ? '朝食' : mealKey === 'lunch' ? '昼食' : '夕食'}）</div>
-        <div>${parsed.dishes.map(d => `<div>・${d.name} ${d.amount_g}g / ${d.calories}kcal <span class="dish-conf conf-${d.confidence}">${d.confidence}</span></div>`).join('')}</div>
-        <div style="margin-top:8px;color:#f97316;font-weight:700">合計: ${parsed.total.calories}kcal</div>
-        ${parsed.note ? `<div style="margin-top:6px;color:#6a7090;font-size:.75rem">${parsed.note}</div>` : ''}
-      </div>`;
-    showToast('解析完了！');
-    renderMeals();
-    renderToday();
-  } catch (e) {
-    showToast('エラー: ' + e.message);
-    el('ai-nutrition-result').innerHTML = `<div style="color:#ef4444">エラー: ${e.message}</div>`;
-  }
-}
-
-function showNutritionPromptForMeal(mealKey, base64, mimeType) {
-  const prompt = `あなたは50代男性の健康管理をサポートする栄養・フィットネス専門家です。
-食事の写真を見て、以下をJSON形式のみで返してください。
-マークダウンや説明文は不要です。
-
-{
-  "dishes": [...],
-  "total": { "calories": ..., "protein": ..., "fat": ..., "carbs": ..., "fiber": ..., "salt": ... },
-  "note": "..."
-}`;
-  el('promptText').textContent = `[${mealKey === 'breakfast' ? '朝食' : mealKey === 'lunch' ? '昼食' : '夕食'}の栄養解析プロンプト]\n\n${prompt}\n\n※ 設定ページでAPIキーを登録すると、写真アップロード時に自動解析されます。`;
-  el('promptModal').classList.add('open');
-}
-
-function showNutritionPrompt() {
-  const prompt = `あなたは50代男性の健康管理をサポートする栄養・フィットネス専門家です。
-食事の写真を見て、以下をJSON形式のみで返してください。
-マークダウンや説明文は不要です。
-
-{
-  "dishes": [
-    {
-      "name": "料理名",
-      "amount_g": 推定グラム数,
-      "calories": カロリー,
-      "protein": タンパク質,
-      "fat": 脂質,
-      "carbs": 炭水化物,
-      "fiber": 食物繊維,
-      "salt": 塩分,
-      "confidence": "high/medium/low"
-    }
-  ],
-  "total": { "calories": ..., "protein": ..., "fat": ..., "carbs": ..., "fiber": ..., "salt": ... },
-  "note": "推定の補足・注意点"
-}`;
-  el('promptText').textContent = prompt;
-  el('promptModal').classList.add('open');
-}
-
-/* ============================================================
-   AI DAILY COMMENT
-   ============================================================ */
-async function generateDailyComment() {
-  const d = getTodayData(currentDate);
-  const p = getProfile();
-  const mn = allMacros(d);
-  const intake = totalIntake(d);
-
-  const promptText = buildDailyPrompt(d, p, mn, intake);
-
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    el('promptText').textContent = promptText;
-    el('promptModal').classList.add('open');
-    return;
-  }
-
-  const btn = document.querySelector('#page-today .gen-btn');
-  btn.disabled = true;
-  btn.textContent = '解析中...';
-  el('ai-daily-comment').innerHTML = '<div class="ai-placeholder">AIが分析中...</div>';
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: promptText }]
-      })
-    });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error.message);
-    const text = json.content[0].text;
-    renderAIComment('ai-daily-comment', text);
-    saveTodayData(currentDate, { aiComment: text });
-  } catch (e) {
-    el('ai-daily-comment').innerHTML = `<div style="color:#ef4444">エラー: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<span>✨</span> 分析を生成';
-  }
-}
-
-function buildDailyPrompt(d, p, mn, intake) {
-  const mealLine = (key, label) => {
-    const m = d[key];
-    if (!m) return `- ${label}: データなし`;
-    return `- ${label}: ${m.calories}kcal（P:${m.protein}g F:${m.fat}g C:${m.carbs}g）`;
-  };
-  return `以下は本日の健康データです。総合的にコメントしてください。
-
-【Garminデータ】
-- 歩数: ${d.steps != null ? d.steps.toLocaleString() : '未入力'}歩（目標10,000歩）
-- 消費カロリー: ${d.activeCal != null ? d.activeCal : '未入力'}kcal
-- Body Battery: 朝${d.bbMorning != null ? d.bbMorning : '—'} → 夜${d.bbEvening != null ? d.bbEvening : '—'}
-- 睡眠スコア: ${d.sleepScore != null ? d.sleepScore : '未入力'}点
-- 安静時心拍: ${d.restingHr != null ? d.restingHr : '未入力'}bpm
-- ストレスレベル: ${d.stress || '未入力'}
-
-【食事データ】
-${mealLine('breakfast','朝食')}
-${mealLine('lunch','昼食')}
-${mealLine('dinner','夕食')}
-- 合計摂取カロリー: ${intake > 0 ? intake : '未入力'}kcal
-- 塩分合計: ${mn.salt > 0 ? mn.salt.toFixed(1) : '未入力'}g
-
-【プロフィール】
-- ${p.age}歳男性
-- ${p.notes}
-- 毎日10,000歩ウォーキング継続中
-
-以下の形式でコメントしてください：
-1. 今日の総合評価（一言）
-2. 良かった点
-3. 明日への改善アドバイス（1つだけ）
-4. Body Batteryと食事・活動の相関コメント`;
-}
-
-/* ============================================================
-   AI WEEKLY REPORT
-   ============================================================ */
-async function generateWeeklyReport() {
-  const store = getStore();
-  const dates = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(currentDate);
-    d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0,10));
-  }
-  const weeklyData = dates.map(date => {
-    const d = store[date] || {};
-    const mn = allMacros(d);
-    return {
-      date,
-      steps: d.steps || null,
-      activeCal: d.activeCal || null,
-      bbMorning: d.bbMorning || null,
-      bbEvening: d.bbEvening || null,
-      sleepScore: d.sleepScore || null,
-      restingHr: d.restingHr || null,
-      stress: d.stress || null,
-      intakeCal: totalIntake(d) || null,
-      protein: mn.protein || null,
-      salt: mn.salt || null,
-      fiber: mn.fiber || null
-    };
-  });
-
-  const promptText = `以下は過去7日間のデータです。週次レポートを作成してください。
-
-【週間データ（JSON）】
-${JSON.stringify(weeklyData, null, 2)}
-
-【出力形式】
-- 今週の総合スコア（10点満点）
-- 歩数達成率（10,000歩クリア日数/7日）
-- カロリー収支トレンド（消費vs摂取）
-- Body Batteryの傾向
-- 栄養バランスの課題（塩分・タンパク質等）
-- 来週のフォーカスポイント（1つ）
-
-最後に「総合スコア: X点」の行を必ず含めてください。`;
-
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    el('promptText').textContent = promptText;
-    el('promptModal').classList.add('open');
-    return;
-  }
-
-  const btn = document.querySelector('#page-weekly .gen-btn');
-  btn.disabled = true;
-  btn.textContent = '生成中...';
-  el('ai-weekly-report').innerHTML = '<div class="ai-placeholder">AIが週次レポートを生成中...</div>';
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: promptText }]
-      })
-    });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error.message);
-    const text = json.content[0].text;
-    renderAIComment('ai-weekly-report', text);
-    // Extract score
-    const match = text.match(/総合スコア[：:]\s*(\d+)/);
-    if (match) {
-      el('weekly-score').textContent = match[1];
-      el('weekly-score-label').textContent = '今週の総合評価';
-    }
-  } catch (e) {
-    el('ai-weekly-report').innerHTML = `<div style="color:#ef4444">エラー: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<span>📊</span> レポート生成';
-  }
-}
-
-/* ============================================================
-   RENDER AI COMMENT (simple markdown → html)
-   ============================================================ */
-function renderAIComment(containerId, text) {
-  // Simple numbered list rendering
-  const lines = text.split('\n');
-  let html = '';
-  lines.forEach(line => {
-    const numbered = line.match(/^(\d+)[.\s](.+)/);
-    const bold = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    if (numbered) {
-      html += `<div class="ai-section"><div class="ai-section-title">${numbered[1]}. ${numbered[2].replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div></div>`;
-    } else if (line.startsWith('- ') || line.startsWith('・')) {
-      html += `<div style="padding-left:12px;margin:3px 0">${bold}</div>`;
-    } else if (line.trim()) {
-      html += `<div style="margin:4px 0">${bold}</div>`;
-    }
-  });
-  el(containerId).innerHTML = html || text;
-}
 
 /* ============================================================
    SETTINGS
    ============================================================ */
-function saveApiKey() {
-  const key = el('in-apikey').value.trim();
-  if (key) { localStorage.setItem('claudeApiKey', key); showToast('APIキーを保存しました'); }
-  else { showToast('キーを入力してください'); }
-  updateApiStatusBadge();
-}
-function clearApiKey() {
-  localStorage.removeItem('claudeApiKey');
-  el('in-apikey').value = '';
-  updateApiStatusBadge();
-  showToast('APIキーを削除しました');
-}
-function updateApiStatusBadge() {
-  const key = getApiKey();
-  const badge = el('api-status-badge');
-  if (badge) {
-    badge.innerHTML = key
-      ? '<div class="api-status set">✅ APIキー設定済み</div>'
-      : '<div class="api-status unset">⚠️ APIキー未設定（プロンプトコピーモード）</div>';
-  }
-}
 function saveProfile() {
   const p = {
     age: numVal('in-age') || 52,
@@ -1682,14 +1284,6 @@ function clearAllData() {
 /* ============================================================
    MODAL
    ============================================================ */
-function closeModal() { el('promptModal').classList.remove('open'); }
-function copyPrompt() {
-  navigator.clipboard.writeText(el('promptText').textContent)
-    .then(() => showToast('コピーしました！'));
-}
-el('promptModal').addEventListener('click', e => {
-  if (e.target === el('promptModal')) closeModal();
-});
 
 /* ============================================================
    TOAST
