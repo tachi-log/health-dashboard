@@ -604,17 +604,12 @@
       </div>
     </div>
 
-    <div class="section-title">AI 分析コメント</div>
-    <div class="ai-box">
-      <div class="ai-box-header">
-        <div class="ai-badge"><div class="ai-dot"></div> Claude AI</div>
-        <button class="gen-btn" onclick="generateDailyComment()">
-          <span>✨</span> 分析を生成
-        </button>
-      </div>
-      <div class="ai-content" id="ai-daily-comment">
-        <div class="ai-placeholder">「分析を生成」ボタンを押すと、今日のデータをもとにAIコメントが表示されます。</div>
-      </div>
+    <div class="section-title">今日のメモ</div>
+    <div class="form-section" style="margin-top:0">
+      <textarea class="form-input" id="memo-today" rows="4"
+        placeholder="体調・気づき・一言メモなど..."
+        oninput="saveMemo('today', this.value)"
+        style="width:100%;resize:vertical;line-height:1.6"></textarea>
     </div>
 
     <div class="section-title">継続ストリーク（直近7日）</div>
@@ -679,15 +674,12 @@
       </div>
     </div>
 
-    <div class="section-title">AI 栄養分析（写真解析プロンプト）</div>
-    <div class="ai-box">
-      <div class="ai-box-header">
-        <div class="ai-badge"><div class="ai-dot"></div> 栄養解析</div>
-        <button class="gen-btn" onclick="showNutritionPrompt()"><span>📋</span> プロンプト確認</button>
-      </div>
-      <div class="ai-content" id="ai-nutrition-result">
-        <div class="ai-placeholder">写真を追加すると栄養データが記録されます。「プロンプト確認」で Claude へのプロンプトを表示します。</div>
-      </div>
+    <div class="section-title">食事メモ</div>
+    <div class="form-section" style="margin-top:0">
+      <textarea class="form-input" id="memo-meals" rows="4"
+        placeholder="食事の感想・気になったこと・写真メモなど..."
+        oninput="saveMemo('meals', this.value)"
+        style="width:100%;resize:vertical;line-height:1.6"></textarea>
     </div>
 
   </div><!-- /page-meals -->
@@ -739,15 +731,12 @@
       <div class="chart-wrap"><canvas id="chartBB"></canvas></div>
     </div>
 
-    <div class="section-title">AI 週次レポート</div>
-    <div class="ai-box">
-      <div class="ai-box-header">
-        <div class="ai-badge"><div class="ai-dot"></div> 週次分析</div>
-        <button class="gen-btn" onclick="generateWeeklyReport()"><span>📊</span> レポート生成</button>
-      </div>
-      <div class="ai-content" id="ai-weekly-report">
-        <div class="ai-placeholder">「レポート生成」を押すと今週のデータをもとにAI分析が表示されます。</div>
-      </div>
+    <div class="section-title">週次メモ</div>
+    <div class="form-section" style="margin-top:0">
+      <textarea class="form-input" id="memo-weekly" rows="4"
+        placeholder="今週の振り返り・来週の目標など..."
+        oninput="saveMemo('weekly', this.value)"
+        style="width:100%;resize:vertical;line-height:1.6"></textarea>
     </div>
 
   </div><!-- /page-weekly -->
@@ -958,6 +947,7 @@ function renderAll() {
   renderStreak();
   renderInputForm();
   updateApiStatusBadge();
+  loadMemos();
 }
 
 /* ============================================================
@@ -1704,6 +1694,18 @@ el('promptModal').addEventListener('click', e => {
 /* ============================================================
    TOAST
    ============================================================ */
+function saveMemo(type, value) {
+  const key = `memo-${type}-${currentDate}`;
+  localStorage.setItem(key, value);
+}
+
+function loadMemos() {
+  ['today','meals','weekly'].forEach(type => {
+    const el2 = el(`memo-${type}`);
+    if (el2) el2.value = localStorage.getItem(`memo-${type}-${currentDate}`) || '';
+  });
+}
+
 function showToast(msg) {
   const t = el('toast');
   t.textContent = msg;
