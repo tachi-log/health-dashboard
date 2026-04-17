@@ -1,0 +1,50 @@
+name: Garmin Sync
+
+on:
+  schedule:
+    # 毎朝7時（JST = UTC 22:00 前日）に実行
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: '取得対象日 (YYYY-MM-DD) ※空欄で昨日'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install garminconnect
+
+      - name: Run Garmin sync
+        env:
+          GARMIN_EMAIL:    ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: |
+          if [ -n "${{ github.event.inputs.target_date }}" ]; then
+            python scripts/sync_garmin.py "${{ github.event.inputs.target_date }}"
+          else
+            python scripts/sync_garmin.py
+          fi
+
+      - name: Commit & Push data.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --cached --quiet || git commit -m "chore: sync garmin data $(date +%Y-%m-%d)"
+          git push

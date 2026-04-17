@@ -875,9 +875,30 @@
    ============================================================ */
 let currentDate = new Date().toISOString().slice(0,10);
 
+// Garmin同期データ（data.jsonから取得、localStorageとマージ）
+let garminStore = {};
+
+async function loadGarminData() {
+  try {
+    const res = await fetch('./data.json?t=' + Date.now());
+    if (res.ok) {
+      garminStore = await res.json();
+      console.log('[garmin] data.json 読み込み成功', Object.keys(garminStore).length + '日分');
+    }
+  } catch (e) {
+    console.log('[garmin] data.json なし（localStorageのみ使用）');
+  }
+}
+
 function getStore() {
-  try { return JSON.parse(localStorage.getItem('healthDash') || '{}'); }
-  catch { return {}; }
+  const local = JSON.parse(localStorage.getItem('healthDash') || '{}');
+  // Garminデータ（自動同期）とローカル（手入力）をマージ。ローカルが優先
+  const merged = {};
+  const allDates = new Set([...Object.keys(garminStore), ...Object.keys(local)]);
+  allDates.forEach(d => {
+    merged[d] = Object.assign({}, garminStore[d] || {}, local[d] || {});
+  });
+  return merged;
 }
 function setStore(s) { localStorage.setItem('healthDash', JSON.stringify(s)); }
 
@@ -1741,8 +1762,10 @@ function loadDemoData() {
   setStore(store);
 }
 
-loadDemoData();
-renderAll();
+loadGarminData().then(() => {
+  loadDemoData();
+  renderAll();
+});
 </script>
 </body>
 </html>
