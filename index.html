@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>健康ダッシュボード | たっちん</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: #0a0c14;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      background: linear-gradient(135deg, #1a1d2e 0%, #16213e 100%);
+      border-bottom: 1px solid #2a2d3e;
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .header-title { font-size: 1.1rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .header-title span { font-size: 1.4rem; }
+    .header-nav { display: flex; align-items: center; gap: 8px; }
+    .nav-btn {
+      background: #2a2d3e;
+      border: 1px solid #3a3d4e;
+      color: #a0a8c0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all .2s;
+    }
+    .nav-btn:hover { background: #3a3d4e; color: #fff; }
+    .current-date { font-size: 0.9rem; color: #7fa4f0; font-weight: 600; }
+
+    /* ===== TABS ===== */
+    .tab-bar {
+      background: #12151f;
+      border-bottom: 1px solid #2a2d3e;
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab {
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      color: #6a7090;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .tab.active { color: #7fa4f0; border-bottom-color: #7fa4f0; }
+    .tab:hover:not(.active) { color: #a0aec0; }
+
+    /* ===== MAIN ===== */
+    main { max-width: 960px; margin: 0 auto; padding: 16px; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ===== SECTION ===== */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #6a7090;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+      margin-top: 20px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ===== CARD GRID ===== */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 480px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    .card {
+      background: #1a1d2e;
+      border: 1px solid #2a2d3e;
+      border-radius: 12px;
+      padding: 12px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 12px 12px 0 0;
+    }
+    .card.green::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .card.blue::before { background: linear-gradient(90deg, #3b82f6, #1d4ed8); }
+    .card.orange::before { background: linear-gradient(90deg, #f97316, #c2410c); }
+    .card.purple::before { background: linear-gradient(90deg, #a855f7, #7c3aed); }
+    .card.red::before { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+    .card.teal::before { background: linear-gradient(90deg, #14b8a6, #0f766e); }
+    .card-icon { font-size: 1.4rem; margin-bottom: 4px; }
+    .card-label { font-size: 0.72rem; color: #6a7090; }
+    .card-value { font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1.2; }
+    .card-unit { font-size: 0.75rem; color: #8892a4; margin-left: 2px; }
+    .card-sub { font-size: 0.72rem; color: #6a7090; margin-top: 2px; }
+    .card-goal { font-size: 0.7rem; margin-top: 4px; }
+
+    /* ===== PROGRESS BAR ===== */
+    .progress-track {
+      background: #2a2d3e;
+      border-radius: 4px;
+      height: 5px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .6s ease;
+    }
+    .green .progress-fill { background: #22c55e; }
+    .blue .progress-fill { background: #3b82f6; }
+    .orange .progress-fill { background: #f97316; }
+    .purple .progress-fill { background: #a855f7; }
+
+    /* ===== BODY BATTERY ===== */
+    .bb-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .bb-track {
+      flex: 1;
+      background: #2a2d3e;
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .bb-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #ef4444, #f97316, #22c55e);
+      transition: width .6s ease;
+    }
+    .bb-label { font-size: 0.7rem; color: #6a7090; white-space: nowrap; }
+
+    /* ===== MEAL CARDS ===== */
+    .meal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 600px) { .meal-grid { grid-template-columns: 1fr; } }
+    .meal-card {
+      background: #1a1d2e;
+      border: 1px solid #2a2d3e;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .meal-header {
+      padding: 10px 14px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .meal-name { font-size: 0.85rem; font-weight: 700; color: #fff; }
+    .meal-kcal { font-size: 0.8rem; color: #f97316; font-weight: 700; }
+    .meal-macros { padding: 0 14px 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .macro { text-align: center; }
+    .macro-val { font-size: 0.9rem; font-weight: 700; }
+    .macro-label { font-size: 0.65rem; color: #6a7090; }
+    .macro.p .macro-val { color: #3b82f6; }
+    .macro.f .macro-val { color: #f97316; }
+    .macro.c .macro-val { color: #22c55e; }
+    .meal-dishes { padding: 0 14px 10px; }
+    .dish-item { font-size: 0.72rem; color: #8892a4; padding: 2px 0; border-bottom: 1px solid #1e2130; }
+    .dish-item:last-child { border-bottom: none; }
+    .dish-conf { font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; margin-left: 4px; }
+    .conf-high { background: #14532d; color: #4ade80; }
+    .conf-medium { background: #431407; color: #fb923c; }
+    .conf-low { background: #3b0764; color: #c084fc; }
+    .meal-add-btn {
+      display: block;
+      width: calc(100% - 28px);
+      margin: 0 14px 10px;
+      padding: 7px;
+      background: #2a2d3e;
+      border: 1px dashed #3a3d4e;
+      color: #6a7090;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-align: center;
+      transition: all .2s;
+    }
+    .meal-add-btn:hover { background: #3a3d4e; color: #a0aec0; }
+
+    /* ===== NUTRITION TOTAL ===== */
+    .nutrition-total {
+      background: #1a1d2e;
+      border: 1px solid #2a2d3e;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+    .nt-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; }
+    .nt-label { font-size: 0.8rem; color: #8892a4; }
+    .nt-val { font-size: 0.85rem; font-weight: 700; color: #fff; }
+    .nt-bar { flex: 1; margin: 0 12px; background: #2a2d3e; border-radius: 3px; height: 5px; overflow: hidden; }
+    .nt-fill { height: 100%; border-radius: 3px; transition: width .6s; }
+    .nt-row.protein .nt-fill { background: #3b82f6; }
+    .nt-row.fat .nt-fill { background: #f97316; }
+    .nt-row.carbs .nt-fill { background: #22c55e; }
+    .nt-row.fiber .nt-fill { background: #14b8a6; }
+    .nt-row.salt .nt-fill { background: #ef4444; }
+    .calorie-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #2a2d3e;
+      margin-bottom: 8px;
+    }
+    .cal-intake { font-size: 1.6rem; font-weight: 700; color: #f97316; }
+    .cal-vs { font-size: 0.8rem; color: #6a7090; text-align: center; }
+    .cal-burn { font-size: 1.6rem; font-weight: 700; color: #22c55e; }
+    .cal-balance { font-size: 0.8rem; text-align: center; margin-top: 4px; }
+    .cal-balance.surplus { color: #ef4444; }
+    .cal-balance.deficit { color: #22c55e; }
+
+    /* ===== AI COMMENT ===== */
+    .ai-box {
+      background: linear-gradient(135deg, #1a1d2e 0%, #12172a 100%);
+      border: 1px solid #2a3555;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 10px;
+    }
+    .ai-box-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1e2d50;
+      border: 1px solid #2a3d6e;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: #7fa4f0;
+      font-weight: 600;
+    }
+    .ai-dot { width: 7px; height: 7px; background: #7fa4f0; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+    .ai-content { font-size: 0.85rem; line-height: 1.7; color: #c8d0e0; }
+    .ai-content .ai-section { margin-bottom: 10px; }
+    .ai-content .ai-section-title { color: #7fa4f0; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px; }
+    .ai-placeholder { color: #4a5068; font-style: italic; }
+    .gen-btn {
+      background: linear-gradient(135deg, #1e2d50, #1a245e);
+      border: 1px solid #2a3d6e;
+      color: #7fa4f0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .gen-btn:hover { background: linear-gradient(135deg, #263d6e, #223180); color: #a0c0ff; }
+    .gen-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ===== CHART ===== */
+    .chart-card {
+      background: #1a1d2e;
+      border: 1px solid #2a2d3e;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+    .chart-title { font-size: 0.78rem; color: #8892a4; margin-bottom: 10px; font-weight: 600; }
+    .chart-wrap { position: relative; height: 160px; }
+
+    /* ===== WEEKLY REPORT ===== */
+    .weekly-score {
+      background: linear-gradient(135deg, #1a1d2e, #1e2240);
+      border: 1px solid #2a2d3e;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .score-ring { font-size: 3rem; font-weight: 800; color: #7fa4f0; }
+    .score-label { font-size: 0.8rem; color: #6a7090; margin-top: 4px; }
+    .week-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .week-stat-card {
+      background: #1a1d2e;
+      border: 1px solid #2a2d3e;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .wsc-label { font-size: 0.72rem; color: #6a7090; }
+    .wsc-val { font-size: 1.2rem; font-weight: 700; color: #fff; margin: 2px 0; }
+    .wsc-sub { font-size: 0.7rem; color: #8892a4; }
+
+    /* ===== INPUT FORM ===== */
+    .form-section {
+      background: #1a1d2e;
+      border: 1px solid #2a2d3e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 10px;
+    }
+    .form-title { font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 12px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-label { font-size: 0.72rem; color: #8892a4; }
+    .form-input {
+      background: #0f1117;
+      border: 1px solid #2a2d3e;
+      border-radius: 7px;
+      padding: 7px 10px;
+      color: #e0e0e0;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border .2s;
+    }
+    .form-input:focus { border-color: #7fa4f0; }
+    .form-input::placeholder { color: #4a5068; }
+    .save-btn {
+      background: linear-gradient(135deg, #1e2d50, #1a3a6e);
+      border: 1px solid #2a4d8e;
+      color: #7fa4f0;
+      padding: 9px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 12px;
+      width: 100%;
+      transition: all .2s;
+    }
+    .save-btn:hover { background: linear-gradient(135deg, #263d6e, #1e4880); }
+
+    /* ===== PHOTO UPLOAD ===== */
+    .photo-upload {
+      border: 2px dashed #2a2d3e;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: #12151f;
+    }
+    .photo-upload:hover { border-color: #7fa4f0; background: #161a2a; }
+    .photo-upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .photo-upload-text { font-size: 0.82rem; color: #6a7090; }
+    .photo-upload input { display: none; }
+    .photo-preview { max-width: 200px; border-radius: 8px; margin: 8px auto; display: block; }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1e2d50;
+      border: 1px solid #2a3d6e;
+      color: #7fa4f0;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: transform .3s ease;
+      z-index: 1000;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ===== PROMPT MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1a1d2e;
+      border: 1px solid #2a3d6e;
+      border-radius: 14px;
+      padding: 20px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .modal-title { font-size: 0.9rem; font-weight: 700; color: #fff; }
+    .modal-close { background: none; border: none; color: #6a7090; font-size: 1.2rem; cursor: pointer; }
+    .modal-pre {
+      background: #0f1117;
+      border: 1px solid #2a2d3e;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.75rem;
+      color: #a0aec0;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .modal-copy-btn {
+      background: #2a3d6e;
+      border: 1px solid #3a5d8e;
+      color: #7fa4f0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    /* ===== SETTINGS ===== */
+    .api-key-form { margin-top: 10px; }
+    .api-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 10px;
+      margin-top: 8px;
+    }
+    .api-status.set { background: #14532d; color: #4ade80; }
+    .api-status.unset { background: #431407; color: #fb923c; }
+
+    /* ===== STREAK ===== */
+    .streak-row { display: flex; gap: 5px; margin-top: 6px; }
+    .streak-day {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+    .streak-day.done { background: #14532d; color: #4ade80; }
+    .streak-day.miss { background: #2a2d3e; color: #4a5068; }
+    .streak-day.today { background: #1e2d50; color: #7fa4f0; border: 1px solid #7fa4f0; }
+  </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- PROMPT MODAL -->
+<div class="modal-overlay" id="promptModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Claude へのプロンプト</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-pre" id="promptText"></div>
+    <button class="modal-copy-btn" onclick="copyPrompt()">クリップボードにコピー</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="header-title"><span>💪</span> 健康ダッシュボード</div>
+    <div class="header-nav">
+      <button class="nav-btn" onclick="changeDate(-1)">◀</button>
+      <span class="current-date" id="currentDateLabel"></span>
+      <button class="nav-btn" onclick="changeDate(1)">▶</button>
+    </div>
+  </div>
+</header>
+
+<!-- TAB BAR -->
+<div style="background:#12151f; border-bottom:1px solid #2a2d3e;">
+  <div class="tab-bar">
+    <div class="tab active" onclick="showPage('today',this)">今日</div>
+    <div class="tab" onclick="showPage('meals',this)">食事</div>
+    <div class="tab" onclick="showPage('weekly',this)">週次</div>
+    <div class="tab" onclick="showPage('input',this)">入力</div>
+    <div class="tab" onclick="showPage('settings',this)">設定</div>
+  </div>
+</div>
+
+<main>
+
+  <!-- ===== TODAY PAGE ===== -->
+  <div class="page active" id="page-today">
+
+    <div class="section-title">活動サマリー</div>
+    <div class="cards">
+      <div class="card green">
+        <div class="card-icon">👣</div>
+        <div class="card-label">歩数</div>
+        <div class="card-value" id="d-steps">—<span class="card-unit">歩</span></div>
+        <div class="progress-track"><div class="progress-fill" id="d-steps-bar" style="width:0%"></div></div>
+        <div class="card-goal" id="d-steps-goal" style="color:#6a7090;font-size:.68rem">目標 10,000歩</div>
+      </div>
+      <div class="card orange">
+        <div class="card-icon">🔥</div>
+        <div class="card-label">消費カロリー</div>
+        <div class="card-value" id="d-acal">—<span class="card-unit">kcal</span></div>
+        <div class="card-sub" id="d-calbal">収支: —</div>
+      </div>
+      <div class="card purple">
+        <div class="card-icon">⚡</div>
+        <div class="card-label">Body Battery</div>
+        <div class="card-value" id="d-bb-eve">—</div>
+        <div class="bb-bar">
+          <span class="bb-label" id="d-bb-morn">朝—</span>
+          <div class="bb-track"><div class="bb-fill" id="d-bb-bar" style="width:0%"></div></div>
+          <span class="bb-label" id="d-bb-eve2">夜—</span>
+        </div>
+      </div>
+      <div class="card blue">
+        <div class="card-icon">😴</div>
+        <div class="card-label">睡眠スコア</div>
+        <div class="card-value" id="d-sleep">—<span class="card-unit">点</span></div>
+        <div class="progress-track"><div class="progress-fill" id="d-sleep-bar" style="width:0%"></div></div>
+      </div>
+      <div class="card teal">
+        <div class="card-icon">❤️</div>
+        <div class="card-label">安静時心拍</div>
+        <div class="card-value" id="d-hr">—<span class="card-unit">bpm</span></div>
+        <div class="card-sub" id="d-hr-sub">—</div>
+      </div>
+      <div class="card red">
+        <div class="card-icon">😰</div>
+        <div class="card-label">ストレス</div>
+        <div class="card-value" id="d-stress">—</div>
+        <div class="card-sub" id="d-stress-lv">—</div>
+      </div>
+    </div>
+
+    <div class="section-title">カロリー収支</div>
+    <div class="nutrition-total">
+      <div class="calorie-summary">
+        <div>
+          <div style="font-size:.72rem;color:#6a7090">摂取</div>
+          <div class="cal-intake" id="t-intake">— kcal</div>
+        </div>
+        <div class="cal-vs">VS</div>
+        <div>
+          <div style="font-size:.72rem;color:#6a7090">消費</div>
+          <div class="cal-burn" id="t-burn">— kcal</div>
+        </div>
+      </div>
+      <div class="cal-balance" id="t-balance">収支データなし</div>
+
+      <div style="margin-top:12px">
+        <div class="nt-row protein" style="padding:4px 0">
+          <div class="nt-label">タンパク質</div>
+          <div class="nt-bar"><div class="nt-fill" id="nt-p" style="width:0%"></div></div>
+          <div class="nt-val" id="t-protein">—g</div>
+        </div>
+        <div class="nt-row fat" style="padding:4px 0">
+          <div class="nt-label">脂質</div>
+          <div class="nt-bar"><div class="nt-fill" id="nt-f" style="width:0%"></div></div>
+          <div class="nt-val" id="t-fat">—g</div>
+        </div>
+        <div class="nt-row carbs" style="padding:4px 0">
+          <div class="nt-label">炭水化物</div>
+          <div class="nt-bar"><div class="nt-fill" id="nt-c" style="width:0%"></div></div>
+          <div class="nt-val" id="t-carbs">—g</div>
+        </div>
+        <div class="nt-row fiber" style="padding:4px 0">
+          <div class="nt-label">食物繊維</div>
+          <div class="nt-bar"><div class="nt-fill" id="nt-fi" style="width:0%"></div></div>
+          <div class="nt-val" id="t-fiber">—g</div>
+        </div>
+        <div class="nt-row salt" style="padding:4px 0">
+          <div class="nt-label">塩分</div>
+          <div class="nt-bar"><div class="nt-fill" id="nt-s" style="width:0%"></div></div>
+          <div class="nt-val" id="t-salt">—g</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">AI 分析コメント</div>
+    <div class="ai-box">
+      <div class="ai-box-header">
+        <div class="ai-badge"><div class="ai-dot"></div> Claude AI</div>
+        <button class="gen-btn" onclick="generateDailyComment()">
+          <span>✨</span> 分析を生成
+        </button>
+      </div>
+      <div class="ai-content" id="ai-daily-comment">
+        <div class="ai-placeholder">「分析を生成」ボタンを押すと、今日のデータをもとにAIコメントが表示されます。</div>
+      </div>
+    </div>
+
+    <div class="section-title">継続ストリーク（直近7日）</div>
+    <div class="card" style="margin-top:0">
+      <div style="font-size:.78rem;color:#8892a4;margin-bottom:8px">🦶 10,000歩達成</div>
+      <div class="streak-row" id="steps-streak"></div>
+      <div style="font-size:.78rem;color:#8892a4;margin:10px 0 8px">😴 睡眠スコア 70+</div>
+      <div class="streak-row" id="sleep-streak"></div>
+    </div>
+
+  </div><!-- /page-today -->
+
+  <!-- ===== MEALS PAGE ===== -->
+  <div class="page" id="page-meals">
+
+    <div class="section-title">食事記録</div>
+    <div class="meal-grid">
+      <div class="meal-card" id="meal-card-breakfast">
+        <div class="meal-header" style="border-bottom:1px solid #1e2130">
+          <div class="meal-name">🌅 朝食</div>
+          <div class="meal-kcal" id="meal-kcal-breakfast">— kcal</div>
+        </div>
+        <div class="meal-macros">
+          <div class="macro p"><div class="macro-val" id="meal-p-breakfast">—g</div><div class="macro-label">P</div></div>
+          <div class="macro f"><div class="macro-val" id="meal-f-breakfast">—g</div><div class="macro-label">F</div></div>
+          <div class="macro c"><div class="macro-val" id="meal-c-breakfast">—g</div><div class="macro-label">C</div></div>
+        </div>
+        <div class="meal-dishes" id="meal-dishes-breakfast"></div>
+        <label class="meal-add-btn">
+          <input type="file" accept="image/*" onchange="handlePhotoUpload(event,'breakfast')"> 📷 写真を追加
+        </label>
+      </div>
+      <div class="meal-card" id="meal-card-lunch">
+        <div class="meal-header" style="border-bottom:1px solid #1e2130">
+          <div class="meal-name">☀️ 昼食</div>
+          <div class="meal-kcal" id="meal-kcal-lunch">— kcal</div>
+        </div>
+        <div class="meal-macros">
+          <div class="macro p"><div class="macro-val" id="meal-p-lunch">—g</div><div class="macro-label">P</div></div>
+          <div class="macro f"><div class="macro-val" id="meal-f-lunch">—g</div><div class="macro-label">F</div></div>
+          <div class="macro c"><div class="macro-val" id="meal-c-lunch">—g</div><div class="macro-label">C</div></div>
+        </div>
+        <div class="meal-dishes" id="meal-dishes-lunch"></div>
+        <label class="meal-add-btn">
+          <input type="file" accept="image/*" onchange="handlePhotoUpload(event,'lunch')"> 📷 写真を追加
+        </label>
+      </div>
+      <div class="meal-card" id="meal-card-dinner">
+        <div class="meal-header" style="border-bottom:1px solid #1e2130">
+          <div class="meal-name">🌙 夕食</div>
+          <div class="meal-kcal" id="meal-kcal-dinner">— kcal</div>
+        </div>
+        <div class="meal-macros">
+          <div class="macro p"><div class="macro-val" id="meal-p-dinner">—g</div><div class="macro-label">P</div></div>
+          <div class="macro f"><div class="macro-val" id="meal-f-dinner">—g</div><div class="macro-label">F</div></div>
+          <div class="macro c"><div class="macro-val" id="meal-c-dinner">—g</div><div class="macro-label">C</div></div>
+        </div>
+        <div class="meal-dishes" id="meal-dishes-dinner"></div>
+        <label class="meal-add-btn">
+          <input type="file" accept="image/*" onchange="handlePhotoUpload(event,'dinner')"> 📷 写真を追加
+        </label>
+      </div>
+    </div>
+
+    <div class="section-title">AI 栄養分析（写真解析プロンプト）</div>
+    <div class="ai-box">
+      <div class="ai-box-header">
+        <div class="ai-badge"><div class="ai-dot"></div> 栄養解析</div>
+        <button class="gen-btn" onclick="showNutritionPrompt()"><span>📋</span> プロンプト確認</button>
+      </div>
+      <div class="ai-content" id="ai-nutrition-result">
+        <div class="ai-placeholder">写真を追加すると栄養データが記録されます。「プロンプト確認」で Claude へのプロンプトを表示します。</div>
+      </div>
+    </div>
+
+  </div><!-- /page-meals -->
+
+  <!-- ===== WEEKLY PAGE ===== -->
+  <div class="page" id="page-weekly">
+
+    <div class="section-title">今週のスコア</div>
+    <div class="weekly-score">
+      <div class="score-ring" id="weekly-score">—</div>
+      <div style="font-size:.7rem;color:#6a7090">/ 10点</div>
+      <div class="score-label" id="weekly-score-label">週次レポートを生成してください</div>
+    </div>
+
+    <div class="week-stats">
+      <div class="week-stat-card">
+        <div class="wsc-label">歩数達成日</div>
+        <div class="wsc-val" id="ws-steps-days">—/7日</div>
+        <div class="wsc-sub">10,000歩クリア</div>
+      </div>
+      <div class="week-stat-card">
+        <div class="wsc-label">平均摂取カロリー</div>
+        <div class="wsc-val" id="ws-avg-cal">—kcal</div>
+        <div class="wsc-sub">週平均</div>
+      </div>
+      <div class="week-stat-card">
+        <div class="wsc-label">平均塩分</div>
+        <div class="wsc-val" id="ws-avg-salt">—g</div>
+        <div class="wsc-sub">目標: 7.5g以下</div>
+      </div>
+      <div class="week-stat-card">
+        <div class="wsc-label">平均BB（夜）</div>
+        <div class="wsc-val" id="ws-avg-bb">—</div>
+        <div class="wsc-sub">Body Battery</div>
+      </div>
+    </div>
+
+    <div class="section-title">週間トレンド</div>
+    <div class="chart-card">
+      <div class="chart-title">歩数（直近7日）</div>
+      <div class="chart-wrap"><canvas id="chartSteps"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">カロリー収支（摂取 vs 消費）</div>
+      <div class="chart-wrap"><canvas id="chartCalories"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Body Battery（朝/夜）</div>
+      <div class="chart-wrap"><canvas id="chartBB"></canvas></div>
+    </div>
+
+    <div class="section-title">AI 週次レポート</div>
+    <div class="ai-box">
+      <div class="ai-box-header">
+        <div class="ai-badge"><div class="ai-dot"></div> 週次分析</div>
+        <button class="gen-btn" onclick="generateWeeklyReport()"><span>📊</span> レポート生成</button>
+      </div>
+      <div class="ai-content" id="ai-weekly-report">
+        <div class="ai-placeholder">「レポート生成」を押すと今週のデータをもとにAI分析が表示されます。</div>
+      </div>
+    </div>
+
+  </div><!-- /page-weekly -->
+
+  <!-- ===== INPUT PAGE ===== -->
+  <div class="page" id="page-input">
+
+    <div class="section-title">Garmin データ入力</div>
+    <div class="form-section">
+      <div class="form-title">⌚ 活動データ</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">歩数</label>
+          <input class="form-input" type="number" id="in-steps" placeholder="8500">
+        </div>
+        <div class="form-group">
+          <label class="form-label">消費カロリー (kcal)</label>
+          <input class="form-input" type="number" id="in-acal" placeholder="320">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body Battery（朝）</label>
+          <input class="form-input" type="number" id="in-bb-m" placeholder="75" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body Battery（夜）</label>
+          <input class="form-input" type="number" id="in-bb-e" placeholder="35" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">睡眠スコア</label>
+          <input class="form-input" type="number" id="in-sleep" placeholder="72" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">安静時心拍 (bpm)</label>
+          <input class="form-input" type="number" id="in-hr" placeholder="58">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">ストレスレベル（低/中/高）</label>
+          <select class="form-input" id="in-stress">
+            <option value="">選択</option>
+            <option value="低">低</option>
+            <option value="やや低">やや低</option>
+            <option value="中">中</option>
+            <option value="やや高">やや高</option>
+            <option value="高">高</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">食事データ入力（手動）</div>
+    <div class="form-section">
+      <div class="form-title">🍽️ 食事記録</div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div id="meal-forms"></div>
+      </div>
+      <button class="save-btn" onclick="saveDailyData()" style="margin-top:16px">💾 今日のデータを保存</button>
+    </div>
+
+  </div><!-- /page-input -->
+
+  <!-- ===== SETTINGS PAGE ===== -->
+  <div class="page" id="page-settings">
+
+    <div class="section-title">Claude API 設定</div>
+    <div class="form-section">
+      <div class="form-title">🔑 API キー</div>
+      <p style="font-size:.78rem;color:#8892a4;line-height:1.6;margin-bottom:12px">
+        APIキーを設定するとブラウザから直接Claude AIによる分析が可能になります。<br>
+        キーはlocalStorageに保存されます（第三者には送信されません）。
+      </p>
+      <div class="form-group api-key-form">
+        <label class="form-label">Anthropic API Key</label>
+        <input class="form-input" type="password" id="in-apikey" placeholder="sk-ant-...">
+      </div>
+      <div id="api-status-badge"></div>
+      <button class="save-btn" onclick="saveApiKey()">保存</button>
+      <button class="save-btn" style="background:#2a1a1a;border-color:#5a2020;color:#ef4444;margin-top:6px" onclick="clearApiKey()">APIキーを削除</button>
+    </div>
+
+    <div class="section-title">プロフィール設定</div>
+    <div class="form-section">
+      <div class="form-title">👤 基本情報</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">年齢</label>
+          <input class="form-input" type="number" id="in-age" value="52">
+        </div>
+        <div class="form-group">
+          <label class="form-label">目標歩数</label>
+          <input class="form-input" type="number" id="in-goal-steps" value="10000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">目標カロリー (kcal)</label>
+          <input class="form-input" type="number" id="in-goal-cal" value="2000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">塩分目標 (g)</label>
+          <input class="form-input" type="number" id="in-goal-salt" value="7.5">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">特記事項</label>
+        <input class="form-input" type="text" id="in-notes" placeholder="禁酒・禁煙継続中" value="禁酒7年・禁煙17年継続中">
+      </div>
+      <button class="save-btn" onclick="saveProfile()">プロフィールを保存</button>
+    </div>
+
+    <div class="section-title">データ管理</div>
+    <div class="form-section">
+      <div class="form-title">💾 エクスポート / インポート</div>
+      <button class="save-btn" onclick="exportData()">JSONエクスポート</button>
+      <label class="save-btn" style="display:block;text-align:center;cursor:pointer;margin-top:6px">
+        JSONインポート<input type="file" accept=".json" style="display:none" onchange="importData(event)">
+      </label>
+      <button class="save-btn" style="background:#2a1a1a;border-color:#5a2020;color:#ef4444;margin-top:6px" onclick="clearAllData()">全データを削除</button>
+    </div>
+
+  </div><!-- /page-settings -->
+
+</main>
+
+<script>
+/* ============================================================
+   STATE & STORAGE
+   ============================================================ */
+let currentDate = new Date().toISOString().slice(0,10);
+
+function getStore() {
+  try { return JSON.parse(localStorage.getItem('healthDash') || '{}'); }
+  catch { return {}; }
+}
+function setStore(s) { localStorage.setItem('healthDash', JSON.stringify(s)); }
+
+function getTodayData(date) {
+  const s = getStore();
+  return s[date] || {};
+}
+function saveTodayData(date, data) {
+  const s = getStore();
+  s[date] = Object.assign(s[date] || {}, data);
+  setStore(s);
+}
+
+function getProfile() {
+  return JSON.parse(localStorage.getItem('healthProfile') || JSON.stringify({
+    age: 52, goalSteps: 10000, goalCal: 2000, goalSalt: 7.5,
+    notes: '禁酒7年・禁煙17年継続中'
+  }));
+}
+function getApiKey() { return localStorage.getItem('claudeApiKey') || ''; }
+
+/* ============================================================
+   DATE NAV
+   ============================================================ */
+function changeDate(delta) {
+  const d = new Date(currentDate);
+  d.setDate(d.getDate() + delta);
+  currentDate = d.toISOString().slice(0,10);
+  renderAll();
+}
+
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr);
+  const days = ['日','月','火','水','木','金','土'];
+  return `${d.getMonth()+1}/${d.getDate()}（${days[d.getDay()]}）`;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'weekly') renderWeekly();
+  if (id === 'input') renderInputForm();
+}
+
+/* ============================================================
+   RENDER ALL
+   ============================================================ */
+function renderAll() {
+  document.getElementById('currentDateLabel').textContent = formatDateLabel(currentDate);
+  renderToday();
+  renderMeals();
+  renderStreak();
+  renderInputForm();
+  updateApiStatusBadge();
+}
+
+/* ============================================================
+   TODAY
+   ============================================================ */
+function renderToday() {
+  const d = getTodayData(currentDate);
+  const p = getProfile();
+
+  // Steps
+  const steps = d.steps || null;
+  setVal('d-steps', steps != null ? steps.toLocaleString() : '—', 'card-value', true);
+  if (steps != null) {
+    const pct = Math.min(100, steps / p.goalSteps * 100);
+    document.getElementById('d-steps-bar').style.width = pct + '%';
+    const ok = steps >= p.goalSteps;
+    document.getElementById('d-steps-goal').textContent = ok ? '✅ 達成！' : `あと ${(p.goalSteps - steps).toLocaleString()}歩`;
+    document.getElementById('d-steps-goal').style.color = ok ? '#4ade80' : '#f97316';
+  }
+
+  // Active calories
+  const acal = d.activeCal || null;
+  const intake = totalIntake(d);
+  el('d-acal').textContent = acal != null ? acal.toLocaleString() : '—';
+  if (acal != null && intake > 0) {
+    const bal = intake - acal;
+    el('d-calbal').textContent = `収支: ${bal > 0 ? '+' : ''}${bal} kcal`;
+    el('d-calbal').style.color = bal > 0 ? '#ef4444' : '#4ade80';
+  }
+
+  // Body Battery
+  const bbM = d.bbMorning, bbE = d.bbEvening;
+  el('d-bb-eve').textContent = bbE != null ? bbE : '—';
+  el('d-bb-morn').textContent = `朝${bbM != null ? bbM : '—'}`;
+  el('d-bb-eve2').textContent = `夜${bbE != null ? bbE : '—'}`;
+  el('d-bb-bar').style.width = bbE != null ? bbE + '%' : '0%';
+
+  // Sleep
+  const slp = d.sleepScore;
+  el('d-sleep').innerHTML = slp != null ? `${slp}<span class="card-unit">点</span>` : '—';
+  el('d-sleep-bar').style.width = slp != null ? slp + '%' : '0%';
+
+  // HR
+  const hr = d.restingHr;
+  el('d-hr').innerHTML = hr != null ? `${hr}<span class="card-unit">bpm</span>` : '—';
+  el('d-hr-sub').textContent = hr != null ? (hr < 60 ? '良好（低め）' : hr < 70 ? '正常' : '高め') : '—';
+
+  // Stress
+  const stress = d.stress || '—';
+  el('d-stress').textContent = stress;
+  el('d-stress-lv').textContent = stress !== '—' ? `レベル: ${stress}` : '—';
+
+  // Calorie panel
+  if (intake > 0) {
+    el('t-intake').textContent = intake.toLocaleString() + ' kcal';
+    const mn = allMacros(d);
+    el('t-protein').textContent = mn.protein.toFixed(1) + 'g';
+    el('t-fat').textContent = mn.fat.toFixed(1) + 'g';
+    el('t-carbs').textContent = mn.carbs.toFixed(1) + 'g';
+    el('t-fiber').textContent = mn.fiber.toFixed(1) + 'g';
+    el('t-salt').textContent = mn.salt.toFixed(1) + 'g';
+    el('nt-p').style.width = Math.min(100, mn.protein / 80 * 100) + '%';
+    el('nt-f').style.width = Math.min(100, mn.fat / 60 * 100) + '%';
+    el('nt-c').style.width = Math.min(100, mn.carbs / 260 * 100) + '%';
+    el('nt-fi').style.width = Math.min(100, mn.fiber / 20 * 100) + '%';
+    el('nt-s').style.width = Math.min(100, mn.salt / 7.5 * 100) + '%';
+  }
+  if (acal != null) {
+    el('t-burn').textContent = acal.toLocaleString() + ' kcal';
+    if (intake > 0) {
+      const bal = intake - acal;
+      el('t-balance').textContent = `${bal > 0 ? '摂取超過' : 'カロリー不足'}: ${Math.abs(bal)} kcal`;
+      el('t-balance').className = 'cal-balance ' + (bal > 0 ? 'surplus' : 'deficit');
+    }
+  }
+}
+
+function totalIntake(d) {
+  const meals = ['breakfast','lunch','dinner'];
+  return meals.reduce((s,m) => s + ((d[m] && d[m].calories) || 0), 0);
+}
+
+function allMacros(d) {
+  const meals = ['breakfast','lunch','dinner'];
+  const base = {protein:0,fat:0,carbs:0,fiber:0,salt:0};
+  return meals.reduce((acc,m) => {
+    if (!d[m]) return acc;
+    acc.protein += d[m].protein || 0;
+    acc.fat += d[m].fat || 0;
+    acc.carbs += d[m].carbs || 0;
+    acc.fiber += d[m].fiber || 0;
+    acc.salt += d[m].salt || 0;
+    return acc;
+  }, base);
+}
+
+/* ============================================================
+   MEALS
+   ============================================================ */
+function renderMeals() {
+  const d = getTodayData(currentDate);
+  ['breakfast','lunch','dinner'].forEach(m => {
+    const meal = d[m];
+    el(`meal-kcal-${m}`).textContent = meal ? `${meal.calories} kcal` : '— kcal';
+    el(`meal-p-${m}`).textContent = meal ? `${meal.protein}g` : '—g';
+    el(`meal-f-${m}`).textContent = meal ? `${meal.fat}g` : '—g';
+    el(`meal-c-${m}`).textContent = meal ? `${meal.carbs}g` : '—g';
+    const dishEl = el(`meal-dishes-${m}`);
+    dishEl.innerHTML = '';
+    if (meal && meal.dishes) {
+      meal.dishes.forEach(dish => {
+        const div = document.createElement('div');
+        div.className = 'dish-item';
+        div.innerHTML = `${dish.name} <span style="color:#6a7090">${dish.amount_g}g/${dish.calories}kcal</span>
+          <span class="dish-conf conf-${dish.confidence}">${dish.confidence}</span>`;
+        dishEl.appendChild(div);
+      });
+    }
+  });
+}
+
+/* ============================================================
+   STREAK
+   ============================================================ */
+function renderStreak() {
+  const store = getStore();
+  const p = getProfile();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  const days = ['日','月','火','水','木','金','土'];
+  function renderRow(containerId, fn) {
+    const cont = el(containerId);
+    cont.innerHTML = '';
+    dates.forEach(date => {
+      const day = new Date(date).getDay();
+      const d = store[date] || {};
+      const isToday = date === currentDate;
+      const passed = fn(d);
+      const div = document.createElement('div');
+      div.className = 'streak-day ' + (isToday ? 'today' : passed ? 'done' : 'miss');
+      div.textContent = days[day];
+      div.title = date;
+      cont.appendChild(div);
+    });
+  }
+  renderRow('steps-streak', d => d.steps && d.steps >= p.goalSteps);
+  renderRow('sleep-streak', d => d.sleepScore && d.sleepScore >= 70);
+}
+
+/* ============================================================
+   WEEKLY
+   ============================================================ */
+let chartInstances = {};
+
+function renderWeekly() {
+  const store = getStore();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  const labels = dates.map(d => {
+    const dt = new Date(d);
+    return `${dt.getMonth()+1}/${dt.getDate()}`;
+  });
+
+  const data = dates.map(d => store[d] || {});
+  const stepsData = data.map(d => d.steps || 0);
+  const intakeData = data.map(d => totalIntake(d));
+  const burnData = data.map(d => d.activeCal || 0);
+  const bbMornData = data.map(d => d.bbMorning || null);
+  const bbEveData = data.map(d => d.bbEvening || null);
+
+  // Stats
+  const stepsDays = data.filter(d => d.steps && d.steps >= 10000).length;
+  const avgCal = intakeData.filter(v=>v>0).reduce((a,b)=>a+b,0) / (intakeData.filter(v=>v>0).length || 1);
+  const avgSalt = data.map(d => allMacros(d).salt).filter(v=>v>0).reduce((a,b)=>a+b,0) /
+    (data.filter(d => allMacros(d).salt > 0).length || 1);
+  const avgBB = bbEveData.filter(v=>v!=null).reduce((a,b)=>a+b,0) / (bbEveData.filter(v=>v!=null).length || 1);
+
+  el('ws-steps-days').textContent = `${stepsDays}/7日`;
+  el('ws-avg-cal').textContent = avgCal > 0 ? Math.round(avgCal) + 'kcal' : '—';
+  el('ws-avg-salt').textContent = avgSalt > 0 ? avgSalt.toFixed(1) + 'g' : '—';
+  el('ws-avg-bb').textContent = avgBB > 0 ? Math.round(avgBB) : '—';
+
+  drawChart('chartSteps', labels, [{
+    label: '歩数', data: stepsData,
+    borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.15)',
+    fill: true, tension: .4
+  }], { yMin: 0, goalLine: 10000 });
+
+  drawChart('chartCalories', labels, [
+    { label: '摂取', data: intakeData, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,.1)', fill: false, tension: .4 },
+    { label: '消費', data: burnData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.1)', fill: false, tension: .4 }
+  ], { yMin: 0 });
+
+  drawChart('chartBB', labels, [
+    { label: 'BB朝', data: bbMornData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', fill: false, tension: .4, spanGaps: true },
+    { label: 'BB夜', data: bbEveData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,.1)', fill: false, tension: .4, spanGaps: true }
+  ], { yMin: 0, yMax: 100 });
+}
+
+function drawChart(id, labels, datasets, opts = {}) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (chartInstances[id]) { chartInstances[id].destroy(); }
+  const plugins = [];
+  if (opts.goalLine) {
+    plugins.push({
+      id: 'goalLine',
+      beforeDraw(chart) {
+        const { ctx, scales: { y } } = chart;
+        const yPos = y.getPixelForValue(opts.goalLine);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(250,200,50,.4)';
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(chart.chartArea.left, yPos);
+        ctx.lineTo(chart.chartArea.right, yPos);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+  }
+  chartInstances[id] = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8892a4', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: '#2a2d3e' } },
+        y: {
+          min: opts.yMin, max: opts.yMax,
+          ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: '#2a2d3e' }
+        }
+      }
+    },
+    plugins
+  });
+}
+
+/* ============================================================
+   INPUT FORM
+   ============================================================ */
+function renderInputForm() {
+  const d = getTodayData(currentDate);
+  if (d.steps) el('in-steps').value = d.steps;
+  if (d.activeCal) el('in-acal').value = d.activeCal;
+  if (d.bbMorning != null) el('in-bb-m').value = d.bbMorning;
+  if (d.bbEvening != null) el('in-bb-e').value = d.bbEvening;
+  if (d.sleepScore) el('in-sleep').value = d.sleepScore;
+  if (d.restingHr) el('in-hr').value = d.restingHr;
+  if (d.stress) el('in-stress').value = d.stress;
+
+  const mealForms = el('meal-forms');
+  const mealDefs = [
+    { key:'breakfast', label:'🌅 朝食' },
+    { key:'lunch', label:'☀️ 昼食' },
+    { key:'dinner', label:'🌙 夕食' }
+  ];
+  mealForms.innerHTML = mealDefs.map(({key, label}) => {
+    const m = (d[key] || {});
+    return `<div style="border:1px solid #2a2d3e;border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:.8rem;font-weight:700;color:#fff;margin-bottom:8px">${label}</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">カロリー (kcal)</label>
+          <input class="form-input" type="number" id="m-${key}-cal" value="${m.calories||''}" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">P タンパク質 (g)</label>
+          <input class="form-input" type="number" id="m-${key}-p" value="${m.protein||''}" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">F 脂質 (g)</label>
+          <input class="form-input" type="number" id="m-${key}-f" value="${m.fat||''}" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">C 炭水化物 (g)</label>
+          <input class="form-input" type="number" id="m-${key}-c" value="${m.carbs||''}" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">食物繊維 (g)</label>
+          <input class="form-input" type="number" id="m-${key}-fi" value="${m.fiber||''}" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">塩分 (g)</label>
+          <input class="form-input" type="number" id="m-${key}-s" value="${m.salt||''}" placeholder="0"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveDailyData() {
+  const data = {
+    steps: numVal('in-steps'),
+    activeCal: numVal('in-acal'),
+    bbMorning: numVal('in-bb-m'),
+    bbEvening: numVal('in-bb-e'),
+    sleepScore: numVal('in-sleep'),
+    restingHr: numVal('in-hr'),
+    stress: el('in-stress').value || null
+  };
+  ['breakfast','lunch','dinner'].forEach(k => {
+    const cal = numVal(`m-${k}-cal`);
+    if (cal > 0) {
+      data[k] = {
+        calories: cal,
+        protein: numVal(`m-${k}-p`) || 0,
+        fat: numVal(`m-${k}-f`) || 0,
+        carbs: numVal(`m-${k}-c`) || 0,
+        fiber: numVal(`m-${k}-fi`) || 0,
+        salt: numVal(`m-${k}-s`) || 0,
+        dishes: (getTodayData(currentDate)[k] || {}).dishes || []
+      };
+    }
+  });
+  saveTodayData(currentDate, data);
+  showToast('保存しました ✅');
+  renderAll();
+}
+
+/* ============================================================
+   PHOTO UPLOAD (Nutrition Analysis)
+   ============================================================ */
+async function handlePhotoUpload(event, mealKey) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    const mimeType = file.type;
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      showNutritionPromptForMeal(mealKey, base64, mimeType);
+      return;
+    }
+    await analyzePhotoWithClaude(mealKey, base64, mimeType, apiKey);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzePhotoWithClaude(mealKey, base64, mimeType, apiKey) {
+  showToast('AIが解析中...');
+  const prompt = `あなたは50代男性の健康管理をサポートする栄養・フィットネス専門家です。
+食事の写真を見て、以下をJSON形式のみで返してください。
+マークダウンや説明文は不要です。
+
+{
+  "dishes": [
+    {
+      "name": "料理名",
+      "amount_g": 推定グラム数,
+      "calories": カロリー,
+      "protein": タンパク質,
+      "fat": 脂質,
+      "carbs": 炭水化物,
+      "fiber": 食物繊維,
+      "salt": 塩分,
+      "confidence": "high/medium/low"
+    }
+  ],
+  "total": {
+    "calories": 合計カロリー,
+    "protein": 合計タンパク質,
+    "fat": 合計脂質,
+    "carbs": 合計炭水化物,
+    "fiber": 合計食物繊維,
+    "salt": 合計塩分
+  },
+  "note": "推定の補足"
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    const text = json.content[0].text;
+    const parsed = JSON.parse(text);
+    // Save to meal data
+    const mealData = {
+      calories: parsed.total.calories,
+      protein: parsed.total.protein,
+      fat: parsed.total.fat,
+      carbs: parsed.total.carbs,
+      fiber: parsed.total.fiber,
+      salt: parsed.total.salt,
+      dishes: parsed.dishes
+    };
+    const existing = getTodayData(currentDate);
+    const update = {};
+    update[mealKey] = mealData;
+    saveTodayData(currentDate, update);
+    // Show result
+    el('ai-nutrition-result').innerHTML = `
+      <div class="ai-section">
+        <div class="ai-section-title">解析結果（${mealKey === 'breakfast' ? '朝食' : mealKey === 'lunch' ? '昼食' : '夕食'}）</div>
+        <div>${parsed.dishes.map(d => `<div>・${d.name} ${d.amount_g}g / ${d.calories}kcal <span class="dish-conf conf-${d.confidence}">${d.confidence}</span></div>`).join('')}</div>
+        <div style="margin-top:8px;color:#f97316;font-weight:700">合計: ${parsed.total.calories}kcal</div>
+        ${parsed.note ? `<div style="margin-top:6px;color:#6a7090;font-size:.75rem">${parsed.note}</div>` : ''}
+      </div>`;
+    showToast('解析完了！');
+    renderMeals();
+    renderToday();
+  } catch (e) {
+    showToast('エラー: ' + e.message);
+    el('ai-nutrition-result').innerHTML = `<div style="color:#ef4444">エラー: ${e.message}</div>`;
+  }
+}
+
+function showNutritionPromptForMeal(mealKey, base64, mimeType) {
+  const prompt = `あなたは50代男性の健康管理をサポートする栄養・フィットネス専門家です。
+食事の写真を見て、以下をJSON形式のみで返してください。
+マークダウンや説明文は不要です。
+
+{
+  "dishes": [...],
+  "total": { "calories": ..., "protein": ..., "fat": ..., "carbs": ..., "fiber": ..., "salt": ... },
+  "note": "..."
+}`;
+  el('promptText').textContent = `[${mealKey === 'breakfast' ? '朝食' : mealKey === 'lunch' ? '昼食' : '夕食'}の栄養解析プロンプト]\n\n${prompt}\n\n※ 設定ページでAPIキーを登録すると、写真アップロード時に自動解析されます。`;
+  el('promptModal').classList.add('open');
+}
+
+function showNutritionPrompt() {
+  const prompt = `あなたは50代男性の健康管理をサポートする栄養・フィットネス専門家です。
+食事の写真を見て、以下をJSON形式のみで返してください。
+マークダウンや説明文は不要です。
+
+{
+  "dishes": [
+    {
+      "name": "料理名",
+      "amount_g": 推定グラム数,
+      "calories": カロリー,
+      "protein": タンパク質,
+      "fat": 脂質,
+      "carbs": 炭水化物,
+      "fiber": 食物繊維,
+      "salt": 塩分,
+      "confidence": "high/medium/low"
+    }
+  ],
+  "total": { "calories": ..., "protein": ..., "fat": ..., "carbs": ..., "fiber": ..., "salt": ... },
+  "note": "推定の補足・注意点"
+}`;
+  el('promptText').textContent = prompt;
+  el('promptModal').classList.add('open');
+}
+
+/* ============================================================
+   AI DAILY COMMENT
+   ============================================================ */
+async function generateDailyComment() {
+  const d = getTodayData(currentDate);
+  const p = getProfile();
+  const mn = allMacros(d);
+  const intake = totalIntake(d);
+
+  const promptText = buildDailyPrompt(d, p, mn, intake);
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    el('promptText').textContent = promptText;
+    el('promptModal').classList.add('open');
+    return;
+  }
+
+  const btn = document.querySelector('#page-today .gen-btn');
+  btn.disabled = true;
+  btn.textContent = '解析中...';
+  el('ai-daily-comment').innerHTML = '<div class="ai-placeholder">AIが分析中...</div>';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: promptText }]
+      })
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    const text = json.content[0].text;
+    renderAIComment('ai-daily-comment', text);
+    saveTodayData(currentDate, { aiComment: text });
+  } catch (e) {
+    el('ai-daily-comment').innerHTML = `<div style="color:#ef4444">エラー: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>✨</span> 分析を生成';
+  }
+}
+
+function buildDailyPrompt(d, p, mn, intake) {
+  const mealLine = (key, label) => {
+    const m = d[key];
+    if (!m) return `- ${label}: データなし`;
+    return `- ${label}: ${m.calories}kcal（P:${m.protein}g F:${m.fat}g C:${m.carbs}g）`;
+  };
+  return `以下は本日の健康データです。総合的にコメントしてください。
+
+【Garminデータ】
+- 歩数: ${d.steps != null ? d.steps.toLocaleString() : '未入力'}歩（目標10,000歩）
+- 消費カロリー: ${d.activeCal != null ? d.activeCal : '未入力'}kcal
+- Body Battery: 朝${d.bbMorning != null ? d.bbMorning : '—'} → 夜${d.bbEvening != null ? d.bbEvening : '—'}
+- 睡眠スコア: ${d.sleepScore != null ? d.sleepScore : '未入力'}点
+- 安静時心拍: ${d.restingHr != null ? d.restingHr : '未入力'}bpm
+- ストレスレベル: ${d.stress || '未入力'}
+
+【食事データ】
+${mealLine('breakfast','朝食')}
+${mealLine('lunch','昼食')}
+${mealLine('dinner','夕食')}
+- 合計摂取カロリー: ${intake > 0 ? intake : '未入力'}kcal
+- 塩分合計: ${mn.salt > 0 ? mn.salt.toFixed(1) : '未入力'}g
+
+【プロフィール】
+- ${p.age}歳男性
+- ${p.notes}
+- 毎日10,000歩ウォーキング継続中
+
+以下の形式でコメントしてください：
+1. 今日の総合評価（一言）
+2. 良かった点
+3. 明日への改善アドバイス（1つだけ）
+4. Body Batteryと食事・活動の相関コメント`;
+}
+
+/* ============================================================
+   AI WEEKLY REPORT
+   ============================================================ */
+async function generateWeeklyReport() {
+  const store = getStore();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  const weeklyData = dates.map(date => {
+    const d = store[date] || {};
+    const mn = allMacros(d);
+    return {
+      date,
+      steps: d.steps || null,
+      activeCal: d.activeCal || null,
+      bbMorning: d.bbMorning || null,
+      bbEvening: d.bbEvening || null,
+      sleepScore: d.sleepScore || null,
+      restingHr: d.restingHr || null,
+      stress: d.stress || null,
+      intakeCal: totalIntake(d) || null,
+      protein: mn.protein || null,
+      salt: mn.salt || null,
+      fiber: mn.fiber || null
+    };
+  });
+
+  const promptText = `以下は過去7日間のデータです。週次レポートを作成してください。
+
+【週間データ（JSON）】
+${JSON.stringify(weeklyData, null, 2)}
+
+【出力形式】
+- 今週の総合スコア（10点満点）
+- 歩数達成率（10,000歩クリア日数/7日）
+- カロリー収支トレンド（消費vs摂取）
+- Body Batteryの傾向
+- 栄養バランスの課題（塩分・タンパク質等）
+- 来週のフォーカスポイント（1つ）
+
+最後に「総合スコア: X点」の行を必ず含めてください。`;
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    el('promptText').textContent = promptText;
+    el('promptModal').classList.add('open');
+    return;
+  }
+
+  const btn = document.querySelector('#page-weekly .gen-btn');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+  el('ai-weekly-report').innerHTML = '<div class="ai-placeholder">AIが週次レポートを生成中...</div>';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: promptText }]
+      })
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    const text = json.content[0].text;
+    renderAIComment('ai-weekly-report', text);
+    // Extract score
+    const match = text.match(/総合スコア[：:]\s*(\d+)/);
+    if (match) {
+      el('weekly-score').textContent = match[1];
+      el('weekly-score-label').textContent = '今週の総合評価';
+    }
+  } catch (e) {
+    el('ai-weekly-report').innerHTML = `<div style="color:#ef4444">エラー: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>📊</span> レポート生成';
+  }
+}
+
+/* ============================================================
+   RENDER AI COMMENT (simple markdown → html)
+   ============================================================ */
+function renderAIComment(containerId, text) {
+  // Simple numbered list rendering
+  const lines = text.split('\n');
+  let html = '';
+  lines.forEach(line => {
+    const numbered = line.match(/^(\d+)[.\s](.+)/);
+    const bold = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (numbered) {
+      html += `<div class="ai-section"><div class="ai-section-title">${numbered[1]}. ${numbered[2].replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div></div>`;
+    } else if (line.startsWith('- ') || line.startsWith('・')) {
+      html += `<div style="padding-left:12px;margin:3px 0">${bold}</div>`;
+    } else if (line.trim()) {
+      html += `<div style="margin:4px 0">${bold}</div>`;
+    }
+  });
+  el(containerId).innerHTML = html || text;
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function saveApiKey() {
+  const key = el('in-apikey').value.trim();
+  if (key) { localStorage.setItem('claudeApiKey', key); showToast('APIキーを保存しました'); }
+  else { showToast('キーを入力してください'); }
+  updateApiStatusBadge();
+}
+function clearApiKey() {
+  localStorage.removeItem('claudeApiKey');
+  el('in-apikey').value = '';
+  updateApiStatusBadge();
+  showToast('APIキーを削除しました');
+}
+function updateApiStatusBadge() {
+  const key = getApiKey();
+  const badge = el('api-status-badge');
+  if (badge) {
+    badge.innerHTML = key
+      ? '<div class="api-status set">✅ APIキー設定済み</div>'
+      : '<div class="api-status unset">⚠️ APIキー未設定（プロンプトコピーモード）</div>';
+  }
+}
+function saveProfile() {
+  const p = {
+    age: numVal('in-age') || 52,
+    goalSteps: numVal('in-goal-steps') || 10000,
+    goalCal: numVal('in-goal-cal') || 2000,
+    goalSalt: parseFloat(el('in-goal-salt').value) || 7.5,
+    notes: el('in-notes').value || ''
+  };
+  localStorage.setItem('healthProfile', JSON.stringify(p));
+  showToast('プロフィールを保存しました');
+  renderAll();
+}
+
+/* ============================================================
+   DATA EXPORT / IMPORT
+   ============================================================ */
+function exportData() {
+  const data = { store: getStore(), profile: getProfile(), exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `health-data-${currentDate}.json`;
+  a.click();
+}
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.store) setStore(data.store);
+      if (data.profile) localStorage.setItem('healthProfile', JSON.stringify(data.profile));
+      showToast('インポート完了');
+      renderAll();
+    } catch { showToast('エラー: JSONが不正です'); }
+  };
+  reader.readAsText(file);
+}
+function clearAllData() {
+  if (!confirm('全データを削除しますか？この操作は取り消せません。')) return;
+  localStorage.removeItem('healthDash');
+  showToast('データを削除しました');
+  renderAll();
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+function closeModal() { el('promptModal').classList.remove('open'); }
+function copyPrompt() {
+  navigator.clipboard.writeText(el('promptText').textContent)
+    .then(() => showToast('コピーしました！'));
+}
+el('promptModal').addEventListener('click', e => {
+  if (e.target === el('promptModal')) closeModal();
+});
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showToast(msg) {
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function el(id) { return document.getElementById(id); }
+function setVal(id, val) { const e = el(id); if (e) e.textContent = val; }
+function numVal(id) { const v = parseFloat(el(id)?.value); return isNaN(v) ? null : v; }
+
+/* ============================================================
+   INIT (demo data if empty)
+   ============================================================ */
+function loadDemoData() {
+  const store = getStore();
+  const today = new Date().toISOString().slice(0,10);
+  if (store[today]) return; // already has data
+
+  // inject demo data for last 7 days
+  const demo = [
+    { steps:9823, activeCal:310, bbMorning:72, bbEvening:28, sleepScore:74, restingHr:57, stress:'中',
+      breakfast:{ calories:420, protein:28, fat:12, carbs:52, fiber:4.2, salt:1.8,
+        dishes:[{name:'納豆ご飯',amount_g:200,calories:280,protein:14,fat:6,carbs:42,fiber:3,salt:1.2,confidence:'high'},
+                {name:'味噌汁',amount_g:180,calories:40,protein:3,fat:1,carbs:5,fiber:1,salt:1.2,confidence:'high'}]},
+      dinner:{ calories:680, protein:42, fat:22, carbs:78, fiber:6.5, salt:3.2,
+        dishes:[{name:'鶏胸肉の塩焼き',amount_g:150,calories:220,protein:38,fat:4,carbs:0,fiber:0,salt:0.8,confidence:'high'},
+                {name:'野菜炒め',amount_g:120,calories:90,protein:2,fat:5,carbs:8,fiber:2,salt:1.2,confidence:'medium'},
+                {name:'白米',amount_g:180,calories:290,protein:4,fat:0.5,carbs:65,fiber:0.5,salt:0,confidence:'high'},
+                {name:'小鉢（ほうれん草）',amount_g:80,calories:40,protein:2,fat:1,carbs:4,fiber:2,salt:0.5,confidence:'medium'}]}
+    }
+  ];
+  const offsets = [0,1,2,3,4,5,6];
+  offsets.forEach((off, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - off);
+    const key = d.toISOString().slice(0,10);
+    if (!store[key]) {
+      const base = demo[0];
+      store[key] = {
+        steps: base.steps + Math.round((Math.random()-.4)*2000),
+        activeCal: base.activeCal + Math.round((Math.random()-.5)*100),
+        bbMorning: Math.round(base.bbMorning + (Math.random()-.5)*20),
+        bbEvening: Math.round(base.bbEvening + (Math.random()-.5)*15),
+        sleepScore: Math.round(base.sleepScore + (Math.random()-.5)*10),
+        restingHr: Math.round(base.restingHr + (Math.random()-.5)*4),
+        stress: ['低','低','中','やや低','中'][Math.floor(Math.random()*5)],
+        breakfast: i === 0 ? base.breakfast : { calories: 400+Math.round(Math.random()*100), protein:25, fat:10, carbs:50, fiber:4, salt:1.8, dishes:[] },
+        dinner: i === 0 ? base.dinner : { calories: 650+Math.round(Math.random()*150), protein:40, fat:20, carbs:75, fiber:6, salt:3.0, dishes:[] }
+      };
+    }
+  });
+  setStore(store);
+}
+
+loadDemoData();
+renderAll();
+</script>
+</body>
+</html>
