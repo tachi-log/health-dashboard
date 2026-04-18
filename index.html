@@ -119,6 +119,7 @@
     .card-value { font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1.2; }
     .card-unit { font-size: 0.75rem; color: #8892a4; margin-left: 2px; }
     .card-sub { font-size: 0.72rem; color: #6a7090; margin-top: 2px; }
+    .sparkline { display: block; width: 100%; height: 28px; margin-top: 5px; opacity: .8; }
     .card-goal { font-size: 0.7rem; margin-top: 4px; }
 
     /* ===== PROGRESS BAR ===== */
@@ -512,6 +513,7 @@
         <div class="card-value" id="d-steps">—<span class="card-unit">歩</span></div>
         <div class="progress-track"><div class="progress-fill" id="d-steps-bar" style="width:0%"></div></div>
         <div class="card-goal" id="d-steps-goal" style="color:#6a7090;font-size:.68rem">目標 10,000歩</div>
+        <canvas class="sparkline" id="sp-steps"></canvas>
       </div>
       <div class="card green">
         <div class="card-icon">📍</div>
@@ -540,6 +542,7 @@
         <div class="card-label">安静時心拍</div>
         <div class="card-value" id="d-hr">—<span class="card-unit">bpm</span></div>
         <div class="card-sub" id="d-hr-sub">—</div>
+        <canvas class="sparkline" id="sp-hr"></canvas>
       </div>
       <div class="card teal">
         <div class="card-icon">💓</div>
@@ -552,6 +555,7 @@
         <div class="card-label">ストレス</div>
         <div class="card-value" id="d-stress">—</div>
         <div class="card-sub" id="d-stress-lv">—</div>
+        <canvas class="sparkline" id="sp-stress"></canvas>
       </div>
       <div class="card purple">
         <div class="card-icon">⚡</div>
@@ -562,6 +566,7 @@
           <div class="bb-track"><div class="bb-fill" id="d-bb-bar" style="width:0%"></div></div>
           <span class="bb-label" id="d-bb-eve2">夜—</span>
         </div>
+        <canvas class="sparkline" id="sp-bb"></canvas>
       </div>
     </div>
 
@@ -572,6 +577,7 @@
         <div class="card-label">SpO2（血中酸素）</div>
         <div class="card-value" id="d-spo2">—<span class="card-unit">%</span></div>
         <div class="card-sub">目標: 95%以上</div>
+        <canvas class="sparkline" id="sp-spo2"></canvas>
       </div>
       <div class="card blue">
         <div class="card-icon">🫁</div>
@@ -584,6 +590,7 @@
         <div class="card-label">HRV</div>
         <div class="card-value" id="d-hrv">—<span class="card-unit">ms</span></div>
         <div class="card-sub">心拍変動</div>
+        <canvas class="sparkline" id="sp-hrv"></canvas>
       </div>
     </div>
 
@@ -594,6 +601,7 @@
         <div class="card-label">睡眠スコア</div>
         <div class="card-value" id="d-sleep">—<span class="card-unit">点</span></div>
         <div class="progress-track"><div class="progress-fill" id="d-sleep-bar" style="width:0%"></div></div>
+        <canvas class="sparkline" id="sp-sleep"></canvas>
       </div>
       <div class="card blue">
         <div class="card-icon">🕐</div>
@@ -634,6 +642,7 @@
         <div class="card-label">VO2 Max</div>
         <div class="card-value" id="d-vo2">—</div>
         <div class="card-sub" id="d-fitness-age">フィットネス年齢: —</div>
+        <canvas class="sparkline" id="sp-vo2"></canvas>
       </div>
       <div class="card teal">
         <div class="card-icon">🏋️</div>
@@ -662,6 +671,7 @@
         <div class="card-label">体重</div>
         <div class="card-value" id="d-weight">—<span class="card-unit">kg</span></div>
         <div class="card-sub" id="d-bmi">BMI: —</div>
+        <canvas class="sparkline" id="sp-weight"></canvas>
       </div>
       <div class="card orange">
         <div class="card-icon">🫙</div>
@@ -1107,6 +1117,7 @@ function renderAll() {
   renderStreak();
   renderInputForm();
   loadMemos();
+  renderSparklines();
 }
 
 /* ============================================================
@@ -1546,6 +1557,95 @@ function loadMemos() {
     const el2 = el(`memo-${type}`);
     if (el2) el2.value = localStorage.getItem(`memo-${type}-${currentDate}`) || '';
   });
+}
+
+/* ============================================================
+   SPARKLINES
+   ============================================================ */
+function drawSparkline(canvasId, values, color, goalLine) {
+  const canvas = el(canvasId);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth || 100;
+  const h = 28;
+  canvas.width  = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const valid = values.filter(v => v != null);
+  if (valid.length < 2) return;
+
+  const minV = Math.min(...valid);
+  const maxV = Math.max(...valid);
+  const range = maxV - minV || 1;
+  const pad = 3;
+
+  const xStep = (w - pad * 2) / (values.length - 1);
+  const yFor  = v => h - pad - ((v - minV) / range) * (h - pad * 2);
+
+  // goal line
+  if (goalLine != null && goalLine >= minV && goalLine <= maxV) {
+    const gy = yFor(goalLine);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(250,200,50,.35)';
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, gy);
+    ctx.lineTo(w - pad, gy);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // area fill
+  ctx.beginPath();
+  let first = true;
+  values.forEach((v, i) => {
+    if (v == null) return;
+    const x = pad + i * xStep;
+    const y = yFor(v);
+    first ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    first = false;
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // dots
+  values.forEach((v, i) => {
+    if (v == null) return;
+    ctx.beginPath();
+    ctx.arc(pad + i * xStep, yFor(v), 2, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+}
+
+function renderSparklines() {
+  const store = getStore();
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  const get = key => dates.map(d => (store[d] || {})[key] || null);
+
+  setTimeout(() => {
+    drawSparkline('sp-steps',  get('steps'),      '#22c55e', 10000);
+    drawSparkline('sp-hr',     get('restingHr'),  '#14b8a6');
+    drawSparkline('sp-stress', get('stressAvg'),  '#ef4444');
+    drawSparkline('sp-spo2',   get('spo2'),        '#3b82f6', 95);
+    drawSparkline('sp-hrv',    get('hrv'),         '#a855f7');
+    drawSparkline('sp-sleep',  get('sleepScore'), '#3b82f6', 70);
+    drawSparkline('sp-vo2',    get('vo2Max'),      '#14b8a6');
+    drawSparkline('sp-weight', get('weightKg'),   '#f97316');
+    drawSparkline('sp-bb',     get('bbEvening'),  '#a855f7');
+  }, 50);
 }
 
 /* ============================================================
