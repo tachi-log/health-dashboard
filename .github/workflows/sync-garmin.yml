@@ -2,12 +2,14 @@ name: Garmin Sync
 
 on:
   schedule:
-    # 毎朝7時（JST = UTC 22:00 前日）に実行
-    - cron: '0 22 * * *'
+    - cron: '0 22 * * *'   # 07:00 JST
+    - cron: '0 3 * * *'    # 12:00 JST
+    - cron: '0 9 * * *'    # 18:00 JST
+    - cron: '0 13 * * *'   # 22:00 JST
   workflow_dispatch:
     inputs:
       target_date:
-        description: '取得対象日 (YYYY-MM-DD) ※空欄で昨日'
+        description: '取得対象日 (YYYY-MM-DD) ※空欄で今日＋昨日'
         required: false
         default: ''
 
