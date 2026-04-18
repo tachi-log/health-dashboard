@@ -492,6 +492,7 @@
 <div style="background:#12151f; border-bottom:1px solid #2a2d3e;">
   <div class="tab-bar">
     <div class="tab active" onclick="showPage('today',this)">今日</div>
+    <div class="tab" onclick="showPage('calendar',this)">カレンダー</div>
     <div class="tab" onclick="showPage('weekly',this)">週次</div>
     <div class="tab" onclick="showPage('input',this)">入力</div>
     <div class="tab" onclick="showPage('settings',this)">設定</div>
@@ -706,6 +707,70 @@
 
   </div><!-- /page-today -->
 
+
+  <!-- ===== CALENDAR PAGE ===== -->
+  <div class="page" id="page-calendar">
+
+    <div class="section-title">歩数カレンダー</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <button class="nav-btn" onclick="calChangeMonth(-1)">◀</button>
+      <span id="cal-month-label" style="color:#7fa4f0;font-weight:700;font-size:.95rem"></span>
+      <button class="nav-btn" onclick="calChangeMonth(1)">▶</button>
+    </div>
+
+    <!-- 凡例 -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:.72rem;color:#8892a4">
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#22c55e;margin-right:4px;vertical-align:middle"></span>達成</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f97316;margin-right:4px;vertical-align:middle"></span>未達成</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2a2d3e;margin-right:4px;vertical-align:middle"></span>データなし</span>
+    </div>
+
+    <!-- 曜日ヘッダー -->
+    <div id="cal-grid-header" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px">
+      <div style="text-align:center;font-size:.7rem;color:#ef4444;padding:4px">日</div>
+      <div style="text-align:center;font-size:.7rem;color:#8892a4;padding:4px">月</div>
+      <div style="text-align:center;font-size:.7rem;color:#8892a4;padding:4px">火</div>
+      <div style="text-align:center;font-size:.7rem;color:#8892a4;padding:4px">水</div>
+      <div style="text-align:center;font-size:.7rem;color:#8892a4;padding:4px">木</div>
+      <div style="text-align:center;font-size:.7rem;color:#8892a4;padding:4px">金</div>
+      <div style="text-align:center;font-size:.7rem;color:#3b82f6;padding:4px">土</div>
+    </div>
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+
+    <!-- 月次サマリー -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
+      <div class="card green" style="margin-top:0">
+        <div class="card-label">達成日数</div>
+        <div class="card-value" id="cal-achieved">—<span class="card-unit">日</span></div>
+        <div class="card-sub" id="cal-total-days">/ —日</div>
+      </div>
+      <div class="card green" style="margin-top:0">
+        <div class="card-label">達成率</div>
+        <div class="card-value" id="cal-rate">—<span class="card-unit">%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="cal-rate-bar" style="width:0%"></div></div>
+      </div>
+      <div class="card green" style="margin-top:0">
+        <div class="card-label">最長連続</div>
+        <div class="card-value" id="cal-streak">—<span class="card-unit">日</span></div>
+        <div class="card-sub">連続達成</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px">
+      <div class="card blue" style="margin-top:0">
+        <div class="card-label">月間合計歩数</div>
+        <div class="card-value" id="cal-total-steps" style="font-size:1.2rem">—</div>
+        <div class="card-sub">歩</div>
+      </div>
+      <div class="card blue" style="margin-top:0">
+        <div class="card-label">1日平均歩数</div>
+        <div class="card-value" id="cal-avg-steps" style="font-size:1.2rem">—</div>
+        <div class="card-sub">歩/日</div>
+      </div>
+    </div>
+
+  </div><!-- /page-calendar -->
 
   <!-- ===== WEEKLY PAGE ===== -->
   <div class="page" id="page-weekly">
@@ -1029,6 +1094,7 @@ function showPage(id, el) {
   el.classList.add('active');
   if (id === 'weekly') renderWeekly();
   if (id === 'input') renderInputForm();
+  if (id === 'calendar') renderCalendar();
 }
 
 /* ============================================================
@@ -1480,6 +1546,110 @@ function loadMemos() {
     const el2 = el(`memo-${type}`);
     if (el2) el2.value = localStorage.getItem(`memo-${type}-${currentDate}`) || '';
   });
+}
+
+/* ============================================================
+   CALENDAR
+   ============================================================ */
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+
+function calChangeMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const store   = getStore();
+  const p       = getProfile();
+  const goal    = p.goalSteps || 10000;
+  const today   = new Date();
+
+  // ヘッダー
+  el('cal-month-label').textContent = `${calYear}年${calMonth + 1}月`;
+
+  // 月の日数・開始曜日
+  const firstDay   = new Date(calYear, calMonth, 1).getDay(); // 0=日
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const grid = el('cal-grid');
+  grid.innerHTML = '';
+
+  // 空白セル
+  for (let i = 0; i < firstDay; i++) {
+    const blank = document.createElement('div');
+    grid.appendChild(blank);
+  }
+
+  let achieved = 0, totalSteps = 0, dataCount = 0;
+  let streak = 0, maxStreak = 0, curStreak = 0;
+  const achieved_days = [];
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const data    = store[dateStr] || {};
+    const steps   = data.steps || 0;
+    const isToday = (calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate());
+    const isFuture = new Date(calYear, calMonth, d) > today;
+
+    const cell = document.createElement('div');
+    cell.style.cssText = `
+      border-radius: 8px;
+      padding: 4px 2px;
+      text-align: center;
+      cursor: default;
+      min-height: 52px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      ${isToday ? 'border: 1px solid #7fa4f0;' : ''}
+    `;
+
+    let bg = '#2a2d3e';
+    let stepsColor = '#6a7090';
+
+    if (!isFuture && steps > 0) {
+      dataCount++;
+      totalSteps += steps;
+      if (steps >= goal) {
+        achieved++;
+        achieved_days.push(d);
+        bg = 'rgba(34,197,94,.2)';
+        stepsColor = '#4ade80';
+        curStreak++;
+        if (curStreak > maxStreak) maxStreak = curStreak;
+      } else {
+        bg = 'rgba(249,115,22,.12)';
+        stepsColor = '#f97316';
+        curStreak = 0;
+      }
+    } else if (isFuture) {
+      bg = 'transparent';
+      curStreak = 0;
+    }
+
+    cell.style.background = bg;
+    cell.innerHTML = `
+      <div style="font-size:.75rem;color:${isToday ? '#7fa4f0' : '#a0aec0'};font-weight:${isToday ? '700' : '400'}">${d}</div>
+      ${!isFuture && steps > 0 ? `<div style="font-size:.6rem;color:${stepsColor};line-height:1.2">${(steps/1000).toFixed(1)}k</div>` : ''}
+      ${!isFuture && steps >= goal ? '<div style="font-size:.65rem">✅</div>' : ''}
+    `;
+    grid.appendChild(cell);
+  }
+
+  // サマリー
+  const rate = dataCount > 0 ? Math.round(achieved / dataCount * 100) : 0;
+  el('cal-achieved').innerHTML = `${achieved}<span class="card-unit">日</span>`;
+  el('cal-total-days').textContent = `/ ${dataCount}日`;
+  el('cal-rate').innerHTML = `${rate}<span class="card-unit">%</span>`;
+  el('cal-rate-bar').style.width = rate + '%';
+  el('cal-streak').innerHTML = `${maxStreak}<span class="card-unit">日</span>`;
+  el('cal-total-steps').textContent = dataCount > 0 ? totalSteps.toLocaleString() : '—';
+  el('cal-avg-steps').textContent = dataCount > 0 ? Math.round(totalSteps / dataCount).toLocaleString() : '—';
 }
 
 function showToast(msg) {
