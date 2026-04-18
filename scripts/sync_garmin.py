@@ -16,9 +16,10 @@ except ImportError:
     print("ERROR: garminconnect not installed. Run: pip install garminconnect")
     sys.exit(1)
 
-EMAIL     = os.environ["GARMIN_EMAIL"]
-PASSWORD  = os.environ["GARMIN_PASSWORD"]
-DATA_FILE = Path(__file__).parent.parent / "data.json"
+EMAIL         = os.environ.get("GARMIN_EMAIL", "")
+PASSWORD      = os.environ.get("GARMIN_PASSWORD", "")
+GARMIN_TOKEN  = os.environ.get("GARMIN_TOKEN", "")
+DATA_FILE     = Path(__file__).parent.parent / "data.json"
 
 # 引数があれば指定日のみ、なければ今日＋昨日を取得
 if len(sys.argv) > 1:
@@ -26,9 +27,26 @@ if len(sys.argv) > 1:
 else:
     target_dates = [date.today(), date.today() - timedelta(days=1)]
 
-try:
-    client = Garmin(EMAIL, PASSWORD)
+def login_with_token(token_b64: str):
+    """保存済みトークンでログイン（IPブロック回避）"""
+    import base64, json, tempfile
+    token_data = json.loads(base64.b64decode(token_b64).decode())
+    tmpdir = tempfile.mkdtemp()
+    for filename, content in token_data.items():
+        with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
+            f.write(content)
+    client = Garmin(tokenstore=tmpdir)
     client.login()
+    return client
+
+try:
+    if GARMIN_TOKEN:
+        print("[sync_garmin] トークンでログイン中...")
+        client = login_with_token(GARMIN_TOKEN)
+    else:
+        print("[sync_garmin] メール/パスワードでログイン中...")
+        client = Garmin(EMAIL, PASSWORD)
+        client.login()
     print("[sync_garmin] ログイン成功")
 except Exception as e:
     print(f"[sync_garmin] ログインエラー: {e}")

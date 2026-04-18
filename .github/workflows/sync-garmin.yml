@@ -36,6 +36,7 @@ jobs:
         env:
           GARMIN_EMAIL:    ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GARMIN_TOKEN:    ${{ secrets.GARMIN_TOKEN }}
         run: |
           if [ -n "${{ github.event.inputs.target_date }}" ]; then
             python scripts/sync_garmin.py "${{ github.event.inputs.target_date }}"
