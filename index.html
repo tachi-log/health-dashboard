@@ -504,7 +504,7 @@
   <!-- ===== TODAY PAGE ===== -->
   <div class="page active" id="page-today">
 
-    <div class="section-title">活動サマリー</div>
+    <div class="section-title">活動</div>
     <div class="cards">
       <div class="card green">
         <div class="card-icon">👣</div>
@@ -513,11 +513,45 @@
         <div class="progress-track"><div class="progress-fill" id="d-steps-bar" style="width:0%"></div></div>
         <div class="card-goal" id="d-steps-goal" style="color:#6a7090;font-size:.68rem">目標 10,000歩</div>
       </div>
+      <div class="card green">
+        <div class="card-icon">📍</div>
+        <div class="card-label">距離</div>
+        <div class="card-value" id="d-dist">—<span class="card-unit">km</span></div>
+        <div class="card-sub" id="d-floors">階数: —</div>
+      </div>
       <div class="card orange">
         <div class="card-icon">🔥</div>
-        <div class="card-label">消費カロリー</div>
+        <div class="card-label">消費(アクティブ)</div>
         <div class="card-value" id="d-acal">—<span class="card-unit">kcal</span></div>
-        <div class="card-sub" id="d-calbal">収支: —</div>
+        <div class="card-sub" id="d-totalcal">総消費: —</div>
+      </div>
+      <div class="card orange">
+        <div class="card-icon">⏱️</div>
+        <div class="card-label">強度分数</div>
+        <div class="card-value" id="d-intmin">—<span class="card-unit">分</span></div>
+        <div class="card-sub" id="d-intmin-sub">中/高: —/—</div>
+      </div>
+    </div>
+
+    <div class="section-title">心拍・ストレス</div>
+    <div class="cards">
+      <div class="card teal">
+        <div class="card-icon">❤️</div>
+        <div class="card-label">安静時心拍</div>
+        <div class="card-value" id="d-hr">—<span class="card-unit">bpm</span></div>
+        <div class="card-sub" id="d-hr-sub">—</div>
+      </div>
+      <div class="card teal">
+        <div class="card-icon">💓</div>
+        <div class="card-label">平均/最大心拍</div>
+        <div class="card-value" id="d-avghr">—<span class="card-unit">bpm</span></div>
+        <div class="card-sub" id="d-maxhr">最大: —</div>
+      </div>
+      <div class="card red">
+        <div class="card-icon">😰</div>
+        <div class="card-label">ストレス</div>
+        <div class="card-value" id="d-stress">—</div>
+        <div class="card-sub" id="d-stress-lv">—</div>
       </div>
       <div class="card purple">
         <div class="card-icon">⚡</div>
@@ -529,23 +563,49 @@
           <span class="bb-label" id="d-bb-eve2">夜—</span>
         </div>
       </div>
+    </div>
+
+    <div class="section-title">健康指標</div>
+    <div class="cards">
+      <div class="card blue">
+        <div class="card-icon">🩸</div>
+        <div class="card-label">SpO2（血中酸素）</div>
+        <div class="card-value" id="d-spo2">—<span class="card-unit">%</span></div>
+        <div class="card-sub">目標: 95%以上</div>
+      </div>
+      <div class="card blue">
+        <div class="card-icon">🫁</div>
+        <div class="card-label">呼吸数</div>
+        <div class="card-value" id="d-resp">—<span class="card-unit">回/分</span></div>
+        <div class="card-sub">正常: 12〜20</div>
+      </div>
+      <div class="card purple">
+        <div class="card-icon">📊</div>
+        <div class="card-label">HRV</div>
+        <div class="card-value" id="d-hrv">—<span class="card-unit">ms</span></div>
+        <div class="card-sub">心拍変動</div>
+      </div>
+    </div>
+
+    <div class="section-title">睡眠</div>
+    <div class="cards">
       <div class="card blue">
         <div class="card-icon">😴</div>
         <div class="card-label">睡眠スコア</div>
         <div class="card-value" id="d-sleep">—<span class="card-unit">点</span></div>
         <div class="progress-track"><div class="progress-fill" id="d-sleep-bar" style="width:0%"></div></div>
       </div>
-      <div class="card teal">
-        <div class="card-icon">❤️</div>
-        <div class="card-label">安静時心拍</div>
-        <div class="card-value" id="d-hr">—<span class="card-unit">bpm</span></div>
-        <div class="card-sub" id="d-hr-sub">—</div>
+      <div class="card blue">
+        <div class="card-icon">🕐</div>
+        <div class="card-label">睡眠時間</div>
+        <div class="card-value" id="d-sleep-h">—<span class="card-unit">h</span></div>
+        <div class="card-sub" id="d-awake">覚醒: —分</div>
       </div>
-      <div class="card red">
-        <div class="card-icon">😰</div>
-        <div class="card-label">ストレス</div>
-        <div class="card-value" id="d-stress">—</div>
-        <div class="card-sub" id="d-stress-lv">—</div>
+      <div class="card blue">
+        <div class="card-icon">🌊</div>
+        <div class="card-label">深睡眠/REM</div>
+        <div class="card-value" id="d-deep">—<span class="card-unit">h</span></div>
+        <div class="card-sub" id="d-rem">REM: —h</div>
       </div>
     </div>
 
@@ -724,18 +784,44 @@
   <!-- ===== INPUT PAGE ===== -->
   <div class="page" id="page-input">
 
-    <div class="section-title">Garmin データ入力</div>
+    <div class="section-title">Garmin データ入力（手動）</div>
     <div class="form-section">
-      <div class="form-title">⌚ 活動データ</div>
+      <div class="form-title">🏃 活動</div>
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">歩数</label>
           <input class="form-input" type="number" id="in-steps" placeholder="8500">
         </div>
         <div class="form-group">
-          <label class="form-label">消費カロリー (kcal)</label>
+          <label class="form-label">距離 (km)</label>
+          <input class="form-input" type="number" id="in-dist" placeholder="6.5" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">消費カロリー・アクティブ (kcal)</label>
           <input class="form-input" type="number" id="in-acal" placeholder="320">
         </div>
+        <div class="form-group">
+          <label class="form-label">総消費カロリー (kcal)</label>
+          <input class="form-input" type="number" id="in-totalcal" placeholder="2200">
+        </div>
+        <div class="form-group">
+          <label class="form-label">階数（登り）</label>
+          <input class="form-input" type="number" id="in-floors" placeholder="5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">中強度分数 (分)</label>
+          <input class="form-input" type="number" id="in-mod" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label class="form-label">高強度分数 (分)</label>
+          <input class="form-input" type="number" id="in-vig" placeholder="10">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:10px">
+      <div class="form-title">⚡ Body Battery・ストレス</div>
+      <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Body Battery（朝）</label>
           <input class="form-input" type="number" id="in-bb-m" placeholder="75" min="0" max="100">
@@ -745,15 +831,11 @@
           <input class="form-input" type="number" id="in-bb-e" placeholder="35" min="0" max="100">
         </div>
         <div class="form-group">
-          <label class="form-label">睡眠スコア</label>
-          <input class="form-input" type="number" id="in-sleep" placeholder="72" min="0" max="100">
+          <label class="form-label">ストレススコア (0-100)</label>
+          <input class="form-input" type="number" id="in-stress-avg" placeholder="42" min="0" max="100">
         </div>
         <div class="form-group">
-          <label class="form-label">安静時心拍 (bpm)</label>
-          <input class="form-input" type="number" id="in-hr" placeholder="58">
-        </div>
-        <div class="form-group" style="grid-column:1/-1">
-          <label class="form-label">ストレスレベル（低/中/高）</label>
+          <label class="form-label">ストレスレベル</label>
           <select class="form-input" id="in-stress">
             <option value="">選択</option>
             <option value="低">低</option>
@@ -762,6 +844,72 @@
             <option value="やや高">やや高</option>
             <option value="高">高</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:10px">
+      <div class="form-title">❤️ 心拍数</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">安静時心拍 (bpm)</label>
+          <input class="form-input" type="number" id="in-hr" placeholder="58">
+        </div>
+        <div class="form-group">
+          <label class="form-label">平均心拍 (bpm)</label>
+          <input class="form-input" type="number" id="in-avghr" placeholder="72">
+        </div>
+        <div class="form-group">
+          <label class="form-label">最大心拍 (bpm)</label>
+          <input class="form-input" type="number" id="in-maxhr" placeholder="145">
+        </div>
+        <div class="form-group">
+          <label class="form-label">HRV (ms)</label>
+          <input class="form-input" type="number" id="in-hrv" placeholder="48">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:10px">
+      <div class="form-title">😴 睡眠</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">睡眠スコア</label>
+          <input class="form-input" type="number" id="in-sleep" placeholder="72" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">睡眠時間 (h)</label>
+          <input class="form-input" type="number" id="in-sleep-h" placeholder="7.5" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">深睡眠 (h)</label>
+          <input class="form-input" type="number" id="in-deep" placeholder="1.5" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">REM睡眠 (h)</label>
+          <input class="form-input" type="number" id="in-rem" placeholder="1.8" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">浅睡眠 (h)</label>
+          <input class="form-input" type="number" id="in-light" placeholder="3.5" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">覚醒時間 (分)</label>
+          <input class="form-input" type="number" id="in-awake" placeholder="12">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:10px">
+      <div class="form-title">🩺 健康指標</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">SpO2 (%)</label>
+          <input class="form-input" type="number" id="in-spo2" placeholder="97" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">呼吸数 (回/分)</label>
+          <input class="form-input" type="number" id="in-resp" placeholder="15">
         </div>
       </div>
     </div>
@@ -921,24 +1069,30 @@ function renderToday() {
 
   // Steps
   const steps = d.steps || null;
-  setVal('d-steps', steps != null ? steps.toLocaleString() : '—', 'card-value', true);
+  el('d-steps').innerHTML = steps != null ? `${steps.toLocaleString()}<span class="card-unit">歩</span>` : '—';
   if (steps != null) {
     const pct = Math.min(100, steps / p.goalSteps * 100);
-    document.getElementById('d-steps-bar').style.width = pct + '%';
+    el('d-steps-bar').style.width = pct + '%';
     const ok = steps >= p.goalSteps;
-    document.getElementById('d-steps-goal').textContent = ok ? '✅ 達成！' : `あと ${(p.goalSteps - steps).toLocaleString()}歩`;
-    document.getElementById('d-steps-goal').style.color = ok ? '#4ade80' : '#f97316';
+    el('d-steps-goal').textContent = ok ? '✅ 達成！' : `あと ${(p.goalSteps - steps).toLocaleString()}歩`;
+    el('d-steps-goal').style.color = ok ? '#4ade80' : '#f97316';
   }
 
-  // Active calories
+  // Distance & floors
+  el('d-dist').innerHTML = d.distanceKm != null ? `${d.distanceKm}<span class="card-unit">km</span>` : '—';
+  el('d-floors').textContent = d.floors != null ? `階数: ${d.floors}` : '階数: —';
+
+  // Calories
   const acal = d.activeCal || null;
   const intake = totalIntake(d);
-  el('d-acal').textContent = acal != null ? acal.toLocaleString() : '—';
-  if (acal != null && intake > 0) {
-    const bal = intake - acal;
-    el('d-calbal').textContent = `収支: ${bal > 0 ? '+' : ''}${bal} kcal`;
-    el('d-calbal').style.color = bal > 0 ? '#ef4444' : '#4ade80';
-  }
+  el('d-acal').innerHTML = acal != null ? `${acal.toLocaleString()}<span class="card-unit">kcal</span>` : '—';
+  el('d-totalcal').textContent = d.totalCal != null ? `総消費: ${d.totalCal.toLocaleString()}` : '総消費: —';
+
+  // Intensity minutes
+  const mod = d.modMinutes || 0, vig = d.vigMinutes || 0;
+  const intTotal = mod + vig * 2; // WHO換算
+  el('d-intmin').innerHTML = (mod || vig) ? `${mod + vig}<span class="card-unit">分</span>` : '—';
+  el('d-intmin-sub').textContent = `中/高: ${mod||'—'}/${vig||'—'}分`;
 
   // Body Battery
   const bbM = d.bbMorning, bbE = d.bbEvening;
@@ -947,20 +1101,31 @@ function renderToday() {
   el('d-bb-eve2').textContent = `夜${bbE != null ? bbE : '—'}`;
   el('d-bb-bar').style.width = bbE != null ? bbE + '%' : '0%';
 
-  // Sleep
-  const slp = d.sleepScore;
-  el('d-sleep').innerHTML = slp != null ? `${slp}<span class="card-unit">点</span>` : '—';
-  el('d-sleep-bar').style.width = slp != null ? slp + '%' : '0%';
-
-  // HR
+  // Heart rate
   const hr = d.restingHr;
   el('d-hr').innerHTML = hr != null ? `${hr}<span class="card-unit">bpm</span>` : '—';
   el('d-hr-sub').textContent = hr != null ? (hr < 60 ? '良好（低め）' : hr < 70 ? '正常' : '高め') : '—';
+  el('d-avghr').innerHTML = d.avgHr ? `${d.avgHr}<span class="card-unit">bpm</span>` : '—';
+  el('d-maxhr').textContent = d.maxHr ? `最大: ${d.maxHr}bpm` : '最大: —';
 
   // Stress
   const stress = d.stress || '—';
   el('d-stress').textContent = stress;
-  el('d-stress-lv').textContent = stress !== '—' ? `レベル: ${stress}` : '—';
+  el('d-stress-lv').textContent = d.stressAvg ? `スコア: ${d.stressAvg}` : '—';
+
+  // Sleep
+  const slp = d.sleepScore;
+  el('d-sleep').innerHTML = slp != null ? `${slp}<span class="card-unit">点</span>` : '—';
+  el('d-sleep-bar').style.width = slp != null ? slp + '%' : '0%';
+  el('d-sleep-h').innerHTML = d.sleepHours ? `${d.sleepHours}<span class="card-unit">h</span>` : '—';
+  el('d-awake').textContent = d.awakeMins != null ? `覚醒: ${d.awakeMins}分` : '覚醒: —';
+  el('d-deep').innerHTML = d.deepSleep != null ? `${d.deepSleep}<span class="card-unit">h</span>` : '—';
+  el('d-rem').textContent = d.remSleep != null ? `REM: ${d.remSleep}h` : 'REM: —';
+
+  // SpO2 / Respiration / HRV
+  el('d-spo2').innerHTML = d.spo2 ? `${d.spo2}<span class="card-unit">%</span>` : '—';
+  el('d-resp').innerHTML = d.respiration ? `${d.respiration}<span class="card-unit">回/分</span>` : '—';
+  el('d-hrv').innerHTML = d.hrv ? `${d.hrv}<span class="card-unit">ms</span>` : '—';
 
   // Calorie panel
   if (intake > 0) {
@@ -1162,13 +1327,30 @@ function drawChart(id, labels, datasets, opts = {}) {
    ============================================================ */
 function renderInputForm() {
   const d = getTodayData(currentDate);
-  if (d.steps) el('in-steps').value = d.steps;
-  if (d.activeCal) el('in-acal').value = d.activeCal;
-  if (d.bbMorning != null) el('in-bb-m').value = d.bbMorning;
-  if (d.bbEvening != null) el('in-bb-e').value = d.bbEvening;
-  if (d.sleepScore) el('in-sleep').value = d.sleepScore;
-  if (d.restingHr) el('in-hr').value = d.restingHr;
-  if (d.stress) el('in-stress').value = d.stress;
+  const set = (id, val) => { if (val != null && val !== 0 && el(id)) el(id).value = val; };
+  set('in-steps', d.steps);
+  set('in-dist', d.distanceKm);
+  set('in-acal', d.activeCal);
+  set('in-totalcal', d.totalCal);
+  set('in-floors', d.floors);
+  set('in-mod', d.modMinutes);
+  set('in-vig', d.vigMinutes);
+  set('in-bb-m', d.bbMorning);
+  set('in-bb-e', d.bbEvening);
+  set('in-stress-avg', d.stressAvg);
+  if (d.stress && el('in-stress')) el('in-stress').value = d.stress;
+  set('in-hr', d.restingHr);
+  set('in-avghr', d.avgHr);
+  set('in-maxhr', d.maxHr);
+  set('in-hrv', d.hrv);
+  set('in-sleep', d.sleepScore);
+  set('in-sleep-h', d.sleepHours);
+  set('in-deep', d.deepSleep);
+  set('in-rem', d.remSleep);
+  set('in-light', d.lightSleep);
+  set('in-awake', d.awakeMins);
+  set('in-spo2', d.spo2);
+  set('in-resp', d.respiration);
 
   const mealForms = el('meal-forms');
   const mealDefs = [
@@ -1200,13 +1382,29 @@ function renderInputForm() {
 
 function saveDailyData() {
   const data = {
-    steps: numVal('in-steps'),
-    activeCal: numVal('in-acal'),
-    bbMorning: numVal('in-bb-m'),
-    bbEvening: numVal('in-bb-e'),
-    sleepScore: numVal('in-sleep'),
-    restingHr: numVal('in-hr'),
-    stress: el('in-stress').value || null
+    steps:       numVal('in-steps'),
+    distanceKm:  numVal('in-dist'),
+    activeCal:   numVal('in-acal'),
+    totalCal:    numVal('in-totalcal'),
+    floors:      numVal('in-floors'),
+    modMinutes:  numVal('in-mod'),
+    vigMinutes:  numVal('in-vig'),
+    bbMorning:   numVal('in-bb-m'),
+    bbEvening:   numVal('in-bb-e'),
+    stressAvg:   numVal('in-stress-avg'),
+    stress:      el('in-stress').value || null,
+    restingHr:   numVal('in-hr'),
+    avgHr:       numVal('in-avghr'),
+    maxHr:       numVal('in-maxhr'),
+    hrv:         numVal('in-hrv'),
+    sleepScore:  numVal('in-sleep'),
+    sleepHours:  numVal('in-sleep-h'),
+    deepSleep:   numVal('in-deep'),
+    remSleep:    numVal('in-rem'),
+    lightSleep:  numVal('in-light'),
+    awakeMins:   numVal('in-awake'),
+    spo2:        numVal('in-spo2'),
+    respiration: numVal('in-resp'),
   };
   ['breakfast','lunch','dinner'].forEach(k => {
     const cal = numVal(`m-${k}-cal`);
