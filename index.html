@@ -609,46 +609,16 @@
       </div>
     </div>
 
-    <div class="section-title">カロリー収支</div>
+    <div class="section-title">消費カロリー</div>
     <div class="nutrition-total">
-      <div class="calorie-summary">
-        <div>
-          <div style="font-size:.72rem;color:#6a7090">摂取</div>
-          <div class="cal-intake" id="t-intake">— kcal</div>
-        </div>
-        <div class="cal-vs">VS</div>
-        <div>
-          <div style="font-size:.72rem;color:#6a7090">消費</div>
+      <div class="calorie-summary" style="justify-content:center;gap:32px;border-bottom:none;margin-bottom:0">
+        <div style="text-align:center">
+          <div style="font-size:.72rem;color:#6a7090">アクティブ</div>
           <div class="cal-burn" id="t-burn">— kcal</div>
         </div>
-      </div>
-      <div class="cal-balance" id="t-balance">収支データなし</div>
-
-      <div style="margin-top:12px">
-        <div class="nt-row protein" style="padding:4px 0">
-          <div class="nt-label">タンパク質</div>
-          <div class="nt-bar"><div class="nt-fill" id="nt-p" style="width:0%"></div></div>
-          <div class="nt-val" id="t-protein">—g</div>
-        </div>
-        <div class="nt-row fat" style="padding:4px 0">
-          <div class="nt-label">脂質</div>
-          <div class="nt-bar"><div class="nt-fill" id="nt-f" style="width:0%"></div></div>
-          <div class="nt-val" id="t-fat">—g</div>
-        </div>
-        <div class="nt-row carbs" style="padding:4px 0">
-          <div class="nt-label">炭水化物</div>
-          <div class="nt-bar"><div class="nt-fill" id="nt-c" style="width:0%"></div></div>
-          <div class="nt-val" id="t-carbs">—g</div>
-        </div>
-        <div class="nt-row fiber" style="padding:4px 0">
-          <div class="nt-label">食物繊維</div>
-          <div class="nt-bar"><div class="nt-fill" id="nt-fi" style="width:0%"></div></div>
-          <div class="nt-val" id="t-fiber">—g</div>
-        </div>
-        <div class="nt-row salt" style="padding:4px 0">
-          <div class="nt-label">塩分</div>
-          <div class="nt-bar"><div class="nt-fill" id="nt-s" style="width:0%"></div></div>
-          <div class="nt-val" id="t-salt">—g</div>
+        <div style="text-align:center">
+          <div style="font-size:.72rem;color:#6a7090">総消費</div>
+          <div class="cal-burn" id="t-totalburn" style="color:#14b8a6">— kcal</div>
         </div>
       </div>
     </div>
@@ -1128,28 +1098,8 @@ function renderToday() {
   el('d-hrv').innerHTML = d.hrv ? `${d.hrv}<span class="card-unit">ms</span>` : '—';
 
   // Calorie panel
-  if (intake > 0) {
-    el('t-intake').textContent = intake.toLocaleString() + ' kcal';
-    const mn = allMacros(d);
-    el('t-protein').textContent = mn.protein.toFixed(1) + 'g';
-    el('t-fat').textContent = mn.fat.toFixed(1) + 'g';
-    el('t-carbs').textContent = mn.carbs.toFixed(1) + 'g';
-    el('t-fiber').textContent = mn.fiber.toFixed(1) + 'g';
-    el('t-salt').textContent = mn.salt.toFixed(1) + 'g';
-    el('nt-p').style.width = Math.min(100, mn.protein / 80 * 100) + '%';
-    el('nt-f').style.width = Math.min(100, mn.fat / 60 * 100) + '%';
-    el('nt-c').style.width = Math.min(100, mn.carbs / 260 * 100) + '%';
-    el('nt-fi').style.width = Math.min(100, mn.fiber / 20 * 100) + '%';
-    el('nt-s').style.width = Math.min(100, mn.salt / 7.5 * 100) + '%';
-  }
-  if (acal != null) {
-    el('t-burn').textContent = acal.toLocaleString() + ' kcal';
-    if (intake > 0) {
-      const bal = intake - acal;
-      el('t-balance').textContent = `${bal > 0 ? '摂取超過' : 'カロリー不足'}: ${Math.abs(bal)} kcal`;
-      el('t-balance').className = 'cal-balance ' + (bal > 0 ? 'surplus' : 'deficit');
-    }
-  }
+  if (acal != null) el('t-burn').textContent = acal.toLocaleString() + ' kcal';
+  if (d.totalCal) el('t-totalburn').textContent = d.totalCal.toLocaleString() + ' kcal';
 }
 
 function totalIntake(d) {
