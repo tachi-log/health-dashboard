@@ -492,7 +492,6 @@
 <div style="background:#12151f; border-bottom:1px solid #2a2d3e;">
   <div class="tab-bar">
     <div class="tab active" onclick="showPage('today',this)">今日</div>
-    <div class="tab" onclick="showPage('meals',this)">食事</div>
     <div class="tab" onclick="showPage('weekly',this)">週次</div>
     <div class="tab" onclick="showPage('input',this)">入力</div>
     <div class="tab" onclick="showPage('settings',this)">設定</div>
@@ -707,58 +706,6 @@
 
   </div><!-- /page-today -->
 
-  <!-- ===== MEALS PAGE ===== -->
-  <div class="page" id="page-meals">
-
-    <div class="section-title">食事記録</div>
-    <div class="meal-grid">
-      <div class="meal-card" id="meal-card-breakfast">
-        <div class="meal-header" style="border-bottom:1px solid #1e2130">
-          <div class="meal-name">🌅 朝食</div>
-          <div class="meal-kcal" id="meal-kcal-breakfast">— kcal</div>
-        </div>
-        <div class="meal-macros">
-          <div class="macro p"><div class="macro-val" id="meal-p-breakfast">—g</div><div class="macro-label">P</div></div>
-          <div class="macro f"><div class="macro-val" id="meal-f-breakfast">—g</div><div class="macro-label">F</div></div>
-          <div class="macro c"><div class="macro-val" id="meal-c-breakfast">—g</div><div class="macro-label">C</div></div>
-        </div>
-        <div class="meal-dishes" id="meal-dishes-breakfast"></div>
-      </div>
-      <div class="meal-card" id="meal-card-lunch">
-        <div class="meal-header" style="border-bottom:1px solid #1e2130">
-          <div class="meal-name">☀️ 昼食</div>
-          <div class="meal-kcal" id="meal-kcal-lunch">— kcal</div>
-        </div>
-        <div class="meal-macros">
-          <div class="macro p"><div class="macro-val" id="meal-p-lunch">—g</div><div class="macro-label">P</div></div>
-          <div class="macro f"><div class="macro-val" id="meal-f-lunch">—g</div><div class="macro-label">F</div></div>
-          <div class="macro c"><div class="macro-val" id="meal-c-lunch">—g</div><div class="macro-label">C</div></div>
-        </div>
-        <div class="meal-dishes" id="meal-dishes-lunch"></div>
-      </div>
-      <div class="meal-card" id="meal-card-dinner">
-        <div class="meal-header" style="border-bottom:1px solid #1e2130">
-          <div class="meal-name">🌙 夕食</div>
-          <div class="meal-kcal" id="meal-kcal-dinner">— kcal</div>
-        </div>
-        <div class="meal-macros">
-          <div class="macro p"><div class="macro-val" id="meal-p-dinner">—g</div><div class="macro-label">P</div></div>
-          <div class="macro f"><div class="macro-val" id="meal-f-dinner">—g</div><div class="macro-label">F</div></div>
-          <div class="macro c"><div class="macro-val" id="meal-c-dinner">—g</div><div class="macro-label">C</div></div>
-        </div>
-        <div class="meal-dishes" id="meal-dishes-dinner"></div>
-      </div>
-    </div>
-
-    <div class="section-title">食事メモ</div>
-    <div class="form-section" style="margin-top:0">
-      <textarea class="form-input" id="memo-meals" rows="4"
-        placeholder="食事の感想・気になったこと・写真メモなど..."
-        oninput="saveMemo('meals', this.value)"
-        style="width:100%;resize:vertical;line-height:1.6"></textarea>
-    </div>
-
-  </div><!-- /page-meals -->
 
   <!-- ===== WEEKLY PAGE ===== -->
   <div class="page" id="page-weekly">
