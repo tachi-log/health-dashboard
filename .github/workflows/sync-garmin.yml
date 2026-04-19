@@ -30,7 +30,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install garminconnect
+        run: pip install garminconnect garth
 
       - name: Run Garmin sync
         env:

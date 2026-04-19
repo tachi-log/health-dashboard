@@ -35,9 +35,18 @@ def login_with_token(token_b64: str):
     for filename, content in token_data.items():
         with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
             f.write(content)
-    client = Garmin(tokenstore=tmpdir)
-    client.login()
-    return client
+    # garthのトークンを先にロードしてからGarminクライアントを初期化
+    try:
+        import garth
+        garth.load(tmpdir)
+        client = Garmin()
+        client.login()
+        return client
+    except Exception:
+        # fallback: tokenstore パラメータを試す
+        client = Garmin(tokenstore=tmpdir)
+        client.login()
+        return client
 
 try:
     if GARMIN_TOKEN:
