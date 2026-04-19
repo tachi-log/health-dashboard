@@ -12,10 +12,10 @@ import getpass
 import sys
 
 try:
-    from garminconnect import Garmin
+    import garth
 except ImportError:
-    print("ERROR: garminconnect が未インストールです。")
-    print("以下を実行してください: pip3 install garminconnect --break-system-packages")
+    print("ERROR: garth が未インストールです。")
+    print("以下を実行してください: pip3 install garth --break-system-packages")
     sys.exit(1)
 
 print("=" * 50)
@@ -35,60 +35,34 @@ def get_mfa_code():
     return input("認証コード（6桁）を入力してください: ").strip()
 
 try:
-    client = Garmin(email, password, prompt_mfa=get_mfa_code)
-    client.login()
+    garth.login(email, password, prompt_mfa=get_mfa_code)
     print("ログイン成功！")
 except Exception as e:
     print(f"ログイン失敗: {e}")
     sys.exit(1)
 
-# セッションクッキーを保存
+# garthトークンを一時ディレクトリに保存
+tmpdir = tempfile.mkdtemp()
+try:
+    garth.client.dump(tmpdir)
+    print(f"トークン保存完了: {os.listdir(tmpdir)}")
+except Exception as e:
+    print(f"トークン保存エラー: {e}")
+    sys.exit(1)
+
+# ファイルを読み込んでJSON化 → Base64エンコード
 token_data = {}
+for filename in os.listdir(tmpdir):
+    filepath = os.path.join(tmpdir, filename)
+    with open(filepath, "r", encoding="utf-8") as f:
+        token_data[filename] = f.read()
 
-# 方法1: requestsのセッションクッキー
-try:
-    if hasattr(client, 'session') and hasattr(client.session, 'cookies'):
-        cookies = dict(client.session.cookies)
-        if cookies:
-            token_data['cookies'] = cookies
-            token_data['email']   = email
-            print(f"セッションクッキー取得成功: {len(cookies)} 件")
-except Exception as e:
-    print(f"  cookies取得スキップ: {e}")
+if not token_data:
+    print("エラー: トークンファイルが生成されませんでした")
+    sys.exit(1)
 
-# 方法2: curl_cffiのクッキー
-try:
-    if hasattr(client, 'client') and hasattr(client.client, 'cookies'):
-        cffi_cookies = dict(client.client.cookies)
-        if cffi_cookies:
-            token_data['cffi_cookies'] = cffi_cookies
-            token_data['email'] = email
-            print(f"curl_cffiクッキー取得成功: {len(cffi_cookies)} 件")
-except Exception as e:
-    print(f"  cffi_cookies取得スキップ: {e}")
-
-# 方法3: garthのトークン（別途インストールされている場合）
-try:
-    import garth
-    tmpdir = tempfile.mkdtemp()
-    garth.save(tmpdir)
-    garth_data = {}
-    for filename in os.listdir(tmpdir):
-        filepath = os.path.join(tmpdir, filename)
-        with open(filepath, "r", encoding="utf-8") as f:
-            garth_data[filename] = f.read()
-    if garth_data:
-        token_data['garth'] = garth_data
-        print(f"garthトークン取得成功: {list(garth_data.keys())}")
-except Exception as e:
-    print(f"  garth取得スキップ: {e}")
-
-# 認証情報も保存（フォールバック用）
-token_data['email']    = email
-token_data['password'] = password
-
-if len(token_data) <= 2:  # email + password のみの場合
-    print("警告: セッション情報が取得できませんでした。メール/パスワードのみ保存します。")
+# メールも保存（API呼び出し時に使用）
+token_data['_email'] = email
 
 token_json   = json.dumps(token_data)
 token_base64 = base64.b64encode(token_json.encode()).decode()
@@ -104,4 +78,5 @@ print()
 print("=" * 50)
 print("登録先URL:")
 print("https://github.com/tachi-log/health-dashboard/settings/secrets/actions/new")
+print("（既存のGARMIN_TOKENを「Update secret」で上書きしてください）")
 print("=" * 50)

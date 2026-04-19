@@ -27,46 +27,181 @@ if len(sys.argv) > 1:
 else:
     target_dates = [date.today(), date.today() - timedelta(days=1)]
 
-def login_with_token(token_b64: str):
-    """保存済みトークンでログイン（IPブロック回避）"""
-    import base64, json, tempfile
-    token_data = json.loads(base64.b64decode(token_b64).decode())
+USE_GARTH = False   # garthトークンが有効な場合にTrueになる
+garth_email = ""
 
-    email    = token_data.get('email', '')
-    password = token_data.get('password', '')
+def setup_garth_from_token(token_b64: str) -> bool:
+    """garthトークンを復元してgarthで認証する"""
+    import base64 as _b64, tempfile
+    global garth_email
+    try:
+        import garth as _garth
+    except ImportError:
+        return False
+    try:
+        token_data = json.loads(_b64.b64decode(token_b64).decode())
+        garth_email = token_data.get('_email', '')
+        tmpdir = tempfile.mkdtemp()
+        for filename, content in token_data.items():
+            if filename.startswith('_'):
+                continue
+            with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
+                f.write(content)
+        _garth.client.load(tmpdir)
+        print("[sync_garmin] garthトークン復元成功")
+        return True
+    except Exception as e:
+        print(f"[sync_garmin] garth復元失敗: {e}")
+        return False
 
-    # 方法1: garthトークンがあればgarthでログイン
-    if 'garth' in token_data:
-        try:
-            import garth
-            tmpdir = tempfile.mkdtemp()
-            for filename, content in token_data['garth'].items():
-                with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
-                    f.write(content)
-            garth.resume(tmpdir)
-            client = Garmin(email, password)
-            client.login()
-            return client
-        except Exception as e:
-            print(f"  garth login failed: {e}, trying password...")
 
-    # 方法2: メール/パスワードでログイン（フォールバック）
-    client = Garmin(email, password)
-    client.login()
-    return client
+def fetch_day_with_garth(target_date) -> dict:
+    """garthを使ってその日のデータを取得する"""
+    import garth as _garth
+    from datetime import date as _date
 
-try:
-    if GARMIN_TOKEN:
-        print("[sync_garmin] トークンでログイン中...")
-        client = login_with_token(GARMIN_TOKEN)
-    else:
+    d = target_date if isinstance(target_date, _date) else _date.fromisoformat(str(target_date))
+    e = {}
+
+    def sg(fn, default=None):
+        try: return fn()
+        except Exception as ex:
+            print(f"  garth WARN: {ex}"); return default
+
+    # ===== DailySummary（メインデータ）=====
+    ds = sg(lambda: _garth.DailySummary.get(d))
+    if ds:
+        def iv(v): return v if v else 0
+        steps       = iv(ds.total_steps)
+        dist_m      = iv(ds.total_distance_meters)
+        dist_km     = round(dist_m / 1000, 2) if dist_m else 0
+        active_cal  = iv(ds.active_kilocalories)
+        total_cal   = iv(ds.total_kilocalories)
+        resting_hr  = iv(ds.resting_heart_rate)
+        min_hr      = iv(ds.min_heart_rate)
+        avg_hr      = iv(ds.min_avg_heart_rate)
+        max_hr      = iv(ds.max_heart_rate)
+        stress_avg  = iv(ds.average_stress_level)
+        stress_max  = iv(ds.max_stress_level)
+        bb_morning  = ds.body_battery_at_wake_time
+        bb_max      = ds.body_battery_highest_value
+        bb_min      = ds.body_battery_lowest_value
+        mod_min     = iv(ds.moderate_intensity_minutes)
+        vig_min     = iv(ds.vigorous_intensity_minutes)
+        floors_up   = iv(ds.floors_ascended)
+        spo2_avg    = iv(ds.average_spo_2)
+        spo2_min    = iv(ds.lowest_spo_2)
+        resp_avg    = iv(ds.avg_waking_respiration_value)
+        resp_max    = iv(ds.highest_respiration_value)
+        resp_min    = iv(ds.lowest_respiration_value)
+
+        if stress_avg < 26:    stress_level = "低"
+        elif stress_avg < 51:  stress_level = "やや低"
+        elif stress_avg < 76:  stress_level = "中"
+        elif stress_avg < 86:  stress_level = "やや高"
+        else:                  stress_level = "高"
+
+        if steps:           e["steps"]        = steps
+        if dist_km:         e["distanceKm"]   = dist_km
+        if active_cal:      e["activeCal"]    = active_cal
+        if total_cal:       e["totalCal"]     = total_cal
+        if floors_up:       e["floors"]       = floors_up
+        if mod_min:         e["modMinutes"]   = mod_min
+        if vig_min:         e["vigMinutes"]   = vig_min
+        if resting_hr:      e["restingHr"]    = resting_hr
+        if min_hr:          e["minHr"]        = min_hr
+        if avg_hr:          e["avgHr"]        = avg_hr
+        if max_hr:          e["maxHr"]        = max_hr
+        if bb_morning is not None: e["bbMorning"] = bb_morning
+        if bb_max is not None:     e["bbMax"]     = bb_max
+        if bb_min is not None:     e["bbMin"]     = bb_min
+        e["stress"]         = stress_level
+        if stress_avg:      e["stressAvg"]    = stress_avg
+        if stress_max:      e["stressMax"]    = stress_max
+        if spo2_avg:        e["spo2"]         = spo2_avg
+        if spo2_min:        e["spo2Min"]      = spo2_min
+        if resp_avg:        e["respiration"]  = resp_avg
+        if resp_min:        e["respirationMin"] = resp_min
+        if resp_max:        e["respirationMax"] = resp_max
+
+        print(f"  歩数:{steps} 距離:{dist_km}km 消費:{active_cal}kcal BB:{bb_morning} 睡眠:- VO2:-")
+
+    # ===== 睡眠 =====
+    sl = sg(lambda: _garth.DailySleepData.get(d))
+    if sl and sl.daily_sleep_dto:
+        dto = sl.daily_sleep_dto
+        score = 0
+        if hasattr(dto, 'sleep_scores') and dto.sleep_scores:
+            sc = dto.sleep_scores
+            score = getattr(sc, 'overall', None)
+            if score and hasattr(score, 'value'):
+                score = score.value or 0
+        def secs2h(attr):
+            v = getattr(dto, attr, 0)
+            return round((v or 0) / 3600, 1)
+        sleep_hours = secs2h('sleep_time_seconds')
+        deep_sleep  = secs2h('deep_sleep_seconds')
+        light_sleep = secs2h('light_sleep_seconds')
+        rem_sleep   = secs2h('rem_sleep_seconds')
+        awake_mins  = round((getattr(dto, 'awake_sleep_seconds', 0) or 0) / 60, 0)
+
+        if score:       e["sleepScore"]  = score
+        if sleep_hours: e["sleepHours"]  = sleep_hours
+        if deep_sleep:  e["deepSleep"]   = deep_sleep
+        if light_sleep: e["lightSleep"]  = light_sleep
+        if rem_sleep:   e["remSleep"]    = rem_sleep
+        if awake_mins:  e["awakeMins"]   = awake_mins
+
+    # ===== HRV =====
+    hrv_list = sg(lambda: _garth.DailyHRV.list(d, period=1), [])
+    if hrv_list:
+        h = hrv_list[0]
+        if getattr(h, 'weekly_avg', 0):    e["hrv"]         = h.weekly_avg
+        if getattr(h, 'last_night_avg', 0): e["hrvLastNight"] = h.last_night_avg
+        if getattr(h, 'status', None):      e["hrvStatus"]    = h.status
+
+    # ===== 体重・体組成 =====
+    wt_list = sg(lambda: _garth.WeightData.list(d, period=1), [])
+    if wt_list:
+        w = wt_list[0]
+        if getattr(w, 'weight', None): e["weightKg"]  = round(w.weight / 1000, 1) if w.weight > 500 else w.weight
+        if getattr(w, 'bmi', None):    e["bmi"]        = w.bmi
+        if getattr(w, 'body_fat', None): e["bodyFat"]  = w.body_fat
+        if getattr(w, 'muscle_mass', None): e["muscleMass"] = w.muscle_mass
+        if getattr(w, 'bone_mass', None): e["boneMass"] = w.bone_mass
+        if getattr(w, 'body_water', None): e["bodyWater"] = w.body_water
+        if getattr(w, 'visceral_fat', None): e["visceralFat"] = w.visceral_fat
+        if getattr(w, 'metabolic_age', None): e["metabolicAge"] = w.metabolic_age
+
+    # ===== トレーニング =====
+    tr_list = sg(lambda: _garth.DailyTrainingStatus.list(d, period=1), [])
+    if tr_list:
+        tr = tr_list[0]
+        if getattr(tr, 'training_status', None): e["trainingStatus"] = tr.training_status
+        if getattr(tr, 'weekly_training_load', None): e["trainingLoad"] = tr.weekly_training_load
+
+    return e
+
+
+# ===== ログイン =====
+client = None
+if GARMIN_TOKEN:
+    print("[sync_garmin] garthトークンでログイン中...")
+    USE_GARTH = setup_garth_from_token(GARMIN_TOKEN)
+    if not USE_GARTH:
+        print("[sync_garmin] garth失敗。メール/パスワードでログイン試行...")
+
+if not USE_GARTH:
+    try:
         print("[sync_garmin] メール/パスワードでログイン中...")
         client = Garmin(EMAIL, PASSWORD)
         client.login()
-    print("[sync_garmin] ログイン成功")
-except Exception as e:
-    print(f"[sync_garmin] ログインエラー: {e}")
-    sys.exit(1)
+        print("[sync_garmin] ログイン成功")
+    except Exception as e:
+        print(f"[sync_garmin] ログインエラー: {e}")
+        sys.exit(1)
+else:
+    print("[sync_garmin] ログイン成功（garth）")
 
 def safe(fn, default=None):
     try:
@@ -88,6 +223,14 @@ for target_date in target_dates:
     date_str  = target_date.isoformat()
     date_next = (target_date + timedelta(days=1)).isoformat()
     print(f"\n========== {date_str} ==========")
+
+    # garthモードはここで分岐して保存して次の日付へ
+    if USE_GARTH:
+        e = fetch_day_with_garth(target_date)
+        if date_str not in store:
+            store[date_str] = {}
+        store[date_str].update(e)
+        continue
 
     # 1日サマリー
     summary = safe(lambda: client.get_daily_summary(date_str), {}) or {}
