@@ -43,7 +43,7 @@ def login_with_token(token_b64: str):
             for filename, content in token_data['garth'].items():
                 with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
                     f.write(content)
-            garth.load(tmpdir)
+            garth.resume(tmpdir)
             client = Garmin(email, password)
             client.login()
             return client
