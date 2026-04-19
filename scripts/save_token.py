@@ -9,13 +9,13 @@ import json
 import base64
 import tempfile
 import getpass
+import sys
 
 try:
     from garminconnect import Garmin
 except ImportError:
     print("ERROR: garminconnect が未インストールです。")
-    print("以下を実行してください: pip install garminconnect")
-    import sys
+    print("以下を実行してください: pip3 install garminconnect --break-system-packages")
     sys.exit(1)
 
 print("=" * 50)
@@ -29,30 +29,66 @@ password = getpass.getpass("Garmin パスワード（入力は非表示）: ")
 print()
 print("ログイン中...")
 
+def get_mfa_code():
+    print()
+    print("Garminから認証コードが届いています。")
+    return input("認証コード（6桁）を入力してください: ").strip()
+
 try:
-    client = Garmin(email, password)
+    client = Garmin(email, password, prompt_mfa=get_mfa_code)
     client.login()
     print("ログイン成功！")
 except Exception as e:
     print(f"ログイン失敗: {e}")
-    import sys
     sys.exit(1)
 
-# トークンを一時ディレクトリに保存
-tmpdir = tempfile.mkdtemp()
-try:
-    client.garth.dump(tmpdir)
-except Exception as e:
-    print(f"トークン保存エラー: {e}")
-    import sys
-    sys.exit(1)
-
-# ファイルを読み込んでJSON化 → Base64エンコード
+# セッションクッキーを保存
 token_data = {}
-for filename in os.listdir(tmpdir):
-    filepath = os.path.join(tmpdir, filename)
-    with open(filepath, "r", encoding="utf-8") as f:
-        token_data[filename] = f.read()
+
+# 方法1: requestsのセッションクッキー
+try:
+    if hasattr(client, 'session') and hasattr(client.session, 'cookies'):
+        cookies = dict(client.session.cookies)
+        if cookies:
+            token_data['cookies'] = cookies
+            token_data['email']   = email
+            print(f"セッションクッキー取得成功: {len(cookies)} 件")
+except Exception as e:
+    print(f"  cookies取得スキップ: {e}")
+
+# 方法2: curl_cffiのクッキー
+try:
+    if hasattr(client, 'client') and hasattr(client.client, 'cookies'):
+        cffi_cookies = dict(client.client.cookies)
+        if cffi_cookies:
+            token_data['cffi_cookies'] = cffi_cookies
+            token_data['email'] = email
+            print(f"curl_cffiクッキー取得成功: {len(cffi_cookies)} 件")
+except Exception as e:
+    print(f"  cffi_cookies取得スキップ: {e}")
+
+# 方法3: garthのトークン（別途インストールされている場合）
+try:
+    import garth
+    tmpdir = tempfile.mkdtemp()
+    garth.save(tmpdir)
+    garth_data = {}
+    for filename in os.listdir(tmpdir):
+        filepath = os.path.join(tmpdir, filename)
+        with open(filepath, "r", encoding="utf-8") as f:
+            garth_data[filename] = f.read()
+    if garth_data:
+        token_data['garth'] = garth_data
+        print(f"garthトークン取得成功: {list(garth_data.keys())}")
+except Exception as e:
+    print(f"  garth取得スキップ: {e}")
+
+# 認証情報も保存（フォールバック用）
+token_data['email']    = email
+token_data['password'] = password
+
+if len(token_data) <= 2:  # email + password のみの場合
+    print("警告: セッション情報が取得できませんでした。メール/パスワードのみ保存します。")
 
 token_json   = json.dumps(token_data)
 token_base64 = base64.b64encode(token_json.encode()).decode()

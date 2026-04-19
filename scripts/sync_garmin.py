@@ -31,22 +31,29 @@ def login_with_token(token_b64: str):
     """保存済みトークンでログイン（IPブロック回避）"""
     import base64, json, tempfile
     token_data = json.loads(base64.b64decode(token_b64).decode())
-    tmpdir = tempfile.mkdtemp()
-    for filename, content in token_data.items():
-        with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
-            f.write(content)
-    # garthのトークンを先にロードしてからGarminクライアントを初期化
-    try:
-        import garth
-        garth.load(tmpdir)
-        client = Garmin()
-        client.login()
-        return client
-    except Exception:
-        # fallback: tokenstore パラメータを試す
-        client = Garmin(tokenstore=tmpdir)
-        client.login()
-        return client
+
+    email    = token_data.get('email', '')
+    password = token_data.get('password', '')
+
+    # 方法1: garthトークンがあればgarthでログイン
+    if 'garth' in token_data:
+        try:
+            import garth
+            tmpdir = tempfile.mkdtemp()
+            for filename, content in token_data['garth'].items():
+                with open(os.path.join(tmpdir, filename), "w", encoding="utf-8") as f:
+                    f.write(content)
+            garth.load(tmpdir)
+            client = Garmin(email, password)
+            client.login()
+            return client
+        except Exception as e:
+            print(f"  garth login failed: {e}, trying password...")
+
+    # 方法2: メール/パスワードでログイン（フォールバック）
+    client = Garmin(email, password)
+    client.login()
+    return client
 
 try:
     if GARMIN_TOKEN:
