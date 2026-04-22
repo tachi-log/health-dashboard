@@ -22,6 +22,29 @@ GARMIN_TOKEN    = os.environ.get("GARMIN_TOKEN", "")
 GARMIN_COOKIES  = os.environ.get("GARMIN_COOKIES", "")
 DATA_FILE       = Path(__file__).parent.parent / "data.json"
 
+# macOS上でGARMIN_COOKIESが未設定の場合、ChromeからCookieを自動取得する
+if not GARMIN_COOKIES and sys.platform == 'darwin':
+    try:
+        import subprocess as _sp
+        _script = Path(__file__).parent / 'get_chrome_cookies.py'
+        if _script.exists():
+            print("[sync_garmin] macOS: ChromeからGarmin Cookieを自動取得中...")
+            _result = _sp.run(
+                [sys.executable, str(_script)],
+                capture_output=True, text=True, timeout=60
+            )
+            _b64_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+            for _line in _result.stdout.split('\n'):
+                _line = _line.strip()
+                if len(_line) > 100 and all(c in _b64_chars for c in _line):
+                    GARMIN_COOKIES = _line
+                    print("[sync_garmin] Chrome Cookie自動取得成功")
+                    break
+            if not GARMIN_COOKIES and _result.stderr:
+                print(f"[sync_garmin] Chrome Cookie取得エラー: {_result.stderr[:200]}")
+    except Exception as _e:
+        print(f"[sync_garmin] Chrome Cookie自動取得失敗: {_e}")
+
 # 引数があれば指定日のみ、なければ今日＋昨日を取得
 if len(sys.argv) > 1:
     target_dates = [date.fromisoformat(sys.argv[1])]
@@ -70,14 +93,21 @@ def setup_cookies_from_secret(cookies_b64: str) -> bool:
     try:
         cookie_data = json.loads(_b64.b64decode(cookies_b64).decode())
         s = _req.Session()
-        s.cookies.update(cookie_data)
         s.headers.update({
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'NK': 'NT',
+            'nk': 'NT',
             'X-app-ver': '4.68.2.0',
             'Di-Backend': 'connectapi.garmin.com',
             'accept': 'application/json, text/plain, */*',
         })
+        # _allフィールド（全クッキー文字列）があればCookieヘッダーとして直接使用
+        all_cookies = cookie_data.get('_all', '')
+        if all_cookies:
+            s.headers['Cookie'] = all_cookies
+        else:
+            # 個別クッキーをセット（_で始まるメタフィールドは除外）
+            s.cookies.update({k: v for k, v in cookie_data.items() if not k.startswith('_')})
         cookie_session = s
         print("[sync_garmin] クッキー復元成功")
         return True
