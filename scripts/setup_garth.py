@@ -27,7 +27,7 @@ def main():
     print("Garmin Connect 初期セットアップ")
     print("=" * 50)
     print()
-    print("GarminアカウントのメールアドレスとパスワードをMFAコードを入力してください。")
+    print("Garminアカウントのメールアドレスとパスワードを入力してください。")
     print("入力内容はこのMacにのみ保存され、GitHubには送られません。")
     print()
 
@@ -35,17 +35,32 @@ def main():
     password = getpass.getpass("パスワード: ")
 
     print()
-    print("ログイン中...")
+    print("ログイン中（Web経由）...")
 
     try:
-        garth.login(email, password)
+        # connect.garmin.com の Web SSO を使う（mobile APIより安定）
+        garth.configure(domain="garmin.com")
+        garth.client.login(email, password)
         garth.save(str(GARTH_DIR))
         print()
         print(f"成功！トークンを {GARTH_DIR} に保存しました。")
         print("以後、sync_garmin.py は自動でこのトークンを使います。")
         print("トークンは定期的に自動更新されるので、再ログインは不要です。")
+        print()
+        print("動作確認するには:")
+        print("  python3 ~/health-dashboard/scripts/sync_garmin.py")
     except Exception as e:
-        print(f"ログイン失敗: {e}")
+        err = str(e)
+        if "429" in err:
+            print()
+            print("エラー: Garminにログイン試行が多すぎてレート制限中です。")
+            print("30分ほど待ってから再度実行してください。")
+        elif "403" in err or "401" in err:
+            print()
+            print("エラー: メールアドレスまたはパスワードが正しくないか、")
+            print("MFAが有効な場合は一度Chromeでログインし直してください。")
+        else:
+            print(f"ログイン失敗: {e}")
         sys.exit(1)
 
 
