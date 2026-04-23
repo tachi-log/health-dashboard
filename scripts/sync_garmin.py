@@ -124,7 +124,12 @@ def fetch_day_with_cookies(target_date) -> dict:
     date_next = (d + timedelta(days=1)).isoformat()
     BASE = 'https://connect.garmin.com'
 
+    USER_PK = '131347661'  # ユーザーのプロフィールPK（フォールバック用）
+
     def cget(path, params=None):
+        # /gc-api/ プレフィックスを統一して使用
+        if not path.startswith('/gc-api/'):
+            path = '/gc-api' + path
         try:
             r = cookie_session.get(f'{BASE}{path}', params=params, timeout=30)
             if r.status_code == 200:
@@ -135,13 +140,14 @@ def fetch_day_with_cookies(target_date) -> dict:
             print(f"  WARN: {path} → {ex}")
             return None
 
-    # ユーザープロフィール（displayName取得）
+    # ユーザープロフィール（displayName取得）- 失敗してもPKで継続
     profile = cget('/userprofile-service/userprofile/personal-information')
-    if not profile:
-        print("  ERROR: プロフィール取得失敗（クッキー期限切れの可能性あり）")
-        return {}
-    display_name = profile.get('displayName', '')
-    print(f"  ユーザー: {display_name}")
+    if profile:
+        display_name = profile.get('displayName', USER_PK)
+        print(f"  ユーザー: {display_name}")
+    else:
+        display_name = USER_PK  # GitHub Actions等ではPKをフォールバックとして使用
+        print(f"  プロフィール取得失敗 → PK={USER_PK} でフォールバック")
 
     e = {}
 
