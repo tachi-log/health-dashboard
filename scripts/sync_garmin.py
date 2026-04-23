@@ -469,14 +469,27 @@ def fetch_day_with_garth(target_date) -> dict:
     return e
 
 
-# ===== ログイン（優先順位: クッキー > garthトークン > メール/パスワード）=====
+# ===== ログイン（優先順位: クッキー > ~/.garth/ > garthトークン > メール/パスワード）=====
 client = None
 
 if GARMIN_COOKIES:
     print("[sync_garmin] ブラウザクッキーでログイン中...")
     USE_COOKIES = setup_cookies_from_secret(GARMIN_COOKIES)
 
-if not USE_COOKIES and GARMIN_TOKEN:
+# macOS: ~/.garth/ にトークンがあればgarthで認証（自動更新対応）
+if not USE_COOKIES and sys.platform == 'darwin':
+    _garth_dir = Path.home() / '.garth'
+    if _garth_dir.exists():
+        try:
+            import garth as _garth_mod
+            _garth_mod.client.load(str(_garth_dir))
+            USE_GARTH = True
+            garth_email = _garth_mod.client.username or ""
+            print(f"[sync_garmin] ~/.garth/ からgarthトークンロード成功")
+        except Exception as _ge:
+            print(f"[sync_garmin] ~/.garth/ ロード失敗: {_ge}")
+
+if not USE_COOKIES and not USE_GARTH and GARMIN_TOKEN:
     print("[sync_garmin] garthトークンでログイン中...")
     USE_GARTH = setup_garth_from_token(GARMIN_TOKEN)
     if not USE_GARTH:
@@ -743,3 +756,32 @@ with open(DATA_FILE, "w", encoding="utf-8") as f:
     json.dump(store, f, ensure_ascii=False, indent=2)
 
 print(f"\n[sync_garmin] 保存完了 ({len(target_dates)}日分)")
+
+# ===== Git commit & push (macOS自動同期時) =====
+if sys.platform == 'darwin':
+    import subprocess as _git_sp
+    _repo = DATA_FILE.parent
+    try:
+        # 変更があるか確認
+        _status = _git_sp.run(
+            ['git', 'status', '--porcelain', 'data.json'],
+            capture_output=True, text=True, cwd=_repo
+        )
+        if _status.stdout.strip():
+            # pull --rebase して最新に合わせてからpush
+            _git_sp.run(['git', 'pull', '--rebase', '--autostash'], cwd=_repo, capture_output=True)
+            _git_sp.run(['git', 'add', 'data.json'], cwd=_repo, check=True)
+            _today = target_dates[0].isoformat()
+            _git_sp.run(
+                ['git', 'commit', '-m', f'chore: sync garmin data {_today}'],
+                cwd=_repo, check=True
+            )
+            _push = _git_sp.run(['git', 'push'], cwd=_repo, capture_output=True, text=True)
+            if _push.returncode == 0:
+                print("[sync_garmin] GitHubにpush完了")
+            else:
+                print(f"[sync_garmin] push失敗: {_push.stderr.strip()}")
+        else:
+            print("[sync_garmin] data.jsonに変更なし（push不要）")
+    except Exception as _ge:
+        print(f"[sync_garmin] git操作エラー: {_ge}")
