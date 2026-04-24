@@ -1,11 +1,12 @@
 name: Garmin Sync
 
 on:
-  schedule:
-    - cron: '0 22 * * *'   # 07:00 JST
-    - cron: '0 3 * * *'    # 12:00 JST
-    - cron: '0 9 * * *'    # 18:00 JST
-    - cron: '0 13 * * *'   # 22:00 JST
+  # schedule無効化: Mac launchd で同期するため不要（GarminがGitHub ActionsのIPをブロックするため）
+  # schedule:
+  #   - cron: '0 22 * * *'   # 07:00 JST
+  #   - cron: '0 3 * * *'    # 12:00 JST
+  #   - cron: '0 9 * * *'    # 18:00 JST
+  #   - cron: '0 13 * * *'   # 22:00 JST
   workflow_dispatch:
     inputs:
       target_date:
