@@ -1032,7 +1032,9 @@
 /* ============================================================
    STATE & STORAGE
    ============================================================ */
-let currentDate = new Date().toISOString().slice(0,10);
+// toISOStringはUTCなので日本時間（JST=UTC+9）でローカル日付を取得
+const _now = new Date();
+let currentDate = new Date(_now.getTime() + 9*60*60*1000).toISOString().slice(0,10);
 
 // Garmin同期データ（data.jsonから取得、localStorageとマージ）
 let garminStore = {};
