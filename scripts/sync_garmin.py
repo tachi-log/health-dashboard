@@ -227,6 +227,24 @@ def fetch_day_with_cookies(target_date) -> dict:
         vo2_max     = g.get("vo2MaxPreciseValue", 0) or g.get("vo2MaxValue", 0) or 0
         fitness_age = g.get("fitnessAge", 0) or 0
 
+    # トレーニングステータス
+    training_status_val = None; training_load = training_load_7d = 0
+    ts_data = cget('/metrics-service/metrics/trainingStatus/daily',
+                   params={'fromDate': date_str, 'toDate': date_str}) or {}
+    if ts_data:
+        ts = ts_data.get("trainingStatusDTO", {}) or ts_data
+        training_status_val = ts.get("trainingStatus") or ts.get("latestTrainingStatus")
+        training_load    = ts.get("trainingLoad", 0) or 0
+        training_load_7d = ts.get("7DayTrainingLoad", 0) or ts.get("sevenDayTrainingLoad", 0) or 0
+
+    # 準備度
+    readiness_score = 0; readiness_category = None
+    rn = cget('/metrics-service/metrics/trainingReadiness/list',
+              params={'fromDate': date_str, 'toDate': date_str}) or {}
+    if rn:
+        readiness_score    = rn.get("score", 0) or rn.get("trainingReadinessScore", 0) or 0
+        readiness_category = rn.get("trainingReadinessCategory") or rn.get("category")
+
     # 体組成
     weight_kg = bmi = body_fat_pct = muscle_mass = bone_mass = body_water = visceral_fat = metabolic_age = 0
     bc = cget('/weight-service/weight/dateRange',
@@ -284,6 +302,11 @@ def fetch_day_with_cookies(target_date) -> dict:
     if resp_max:        e["respirationMax"] = resp_max
     if vo2_max:         e["vo2Max"]       = vo2_max
     if fitness_age:     e["fitnessAge"]   = fitness_age
+    if training_status_val: e["trainingStatus"] = training_status_val
+    if training_load:   e["trainingLoad"] = training_load
+    if training_load_7d: e["trainingLoad7d"] = training_load_7d
+    if readiness_score: e["readiness"]    = readiness_score
+    if readiness_category: e["readinessCategory"] = readiness_category
     if weight_kg:       e["weightKg"]     = weight_kg
     if bmi:             e["bmi"]          = bmi
     if body_fat_pct:    e["bodyFat"]      = body_fat_pct
