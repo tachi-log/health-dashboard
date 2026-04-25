@@ -82,32 +82,43 @@ def setup_garth_from_token(token_b64: str) -> bool:
 
 
 def setup_cookies_from_secret(cookies_b64: str) -> bool:
-    """ブラウザクッキーを復元してrequests.Sessionを設定する"""
+    """ブラウザクッキーを復元してcurl_cffiセッションを設定する"""
     import base64 as _b64
+    import re as _re
     global cookie_session
     try:
-        import requests as _req
+        from curl_cffi import requests as _cffi_req
     except ImportError:
-        print("[sync_garmin] requestsが未インストール")
-        return False
+        import subprocess as _sp
+        _sp.run([sys.executable, "-m", "pip", "install", "curl-cffi", "-q"])
+        from curl_cffi import requests as _cffi_req
     try:
         cookie_data = json.loads(_b64.b64decode(cookies_b64).decode())
-        s = _req.Session()
+        s = _cffi_req.Session(impersonate="chrome124")
         s.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'NK': 'NT',
-            'nk': 'NT',
-            'X-app-ver': '4.68.2.0',
-            'Di-Backend': 'connectapi.garmin.com',
             'accept': 'application/json, text/plain, */*',
+            'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+            'sec-ch-ua': '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
         })
-        # _allフィールド（全クッキー文字列）があればCookieヘッダーとして直接使用
-        all_cookies = cookie_data.get('_all', '')
-        if all_cookies:
-            s.headers['Cookie'] = all_cookies
-        else:
-            # 個別クッキーをセット（_で始まるメタフィールドは除外）
-            s.cookies.update({k: v for k, v in cookie_data.items() if not k.startswith('_')})
+        for k in ('JWT_WEB', 'SESSIONID', 'session', '__cflb', 'GARMIN-SSO', 'GARMIN-SSO-CUST-GUID'):
+            if k in cookie_data:
+                s.cookies.set(k, cookie_data[k])
+        # /app/ を取得してCSRFトークンをメタタグから抽出
+        try:
+            r = s.get('https://connect.garmin.com/app/', timeout=15)
+            m = _re.search(r'<meta[^>]+name=["\']csrf-token["\'][^>]+content=["\']([^"\']+)["\']', r.text)
+            if not m:
+                m = _re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']csrf-token["\']', r.text)
+            if m:
+                s.headers['connect-csrf-token'] = m.group(1)
+                print(f"[sync_garmin] CSRFトークン取得成功")
+        except Exception as _ce:
+            print(f"[sync_garmin] CSRFトークン取得失敗: {_ce}")
         cookie_session = s
         print("[sync_garmin] クッキー復元成功")
         return True
@@ -123,43 +134,34 @@ def fetch_day_with_cookies(target_date) -> dict:
     date_str  = d.isoformat()
     date_next = (d + timedelta(days=1)).isoformat()
     BASE = 'https://connect.garmin.com'
-
-    USER_PK = '131347661'  # ユーザーのプロフィールPK（フォールバック用）
+    USER_UUID = '21e1dcd0-c83d-4073-a595-bda1e98497c2'  # gc-api用UUID
+    USER_PK   = '131347661'
 
     def cget(path, params=None):
-        # /gc-api/ プレフィックスを統一して使用
         if not path.startswith('/gc-api/'):
             path = '/gc-api' + path
         try:
             r = cookie_session.get(f'{BASE}{path}', params=params, timeout=30)
             if r.status_code == 200:
-                return r.json()
+                data = r.json()
+                return data if data else None
             print(f"  WARN: {path} → HTTP {r.status_code}")
             return None
         except Exception as ex:
             print(f"  WARN: {path} → {ex}")
             return None
 
-    # ユーザープロフィール（displayName取得）- 失敗してもPKで継続
-    profile = cget('/userprofile-service/userprofile/personal-information')
-    if profile:
-        display_name = profile.get('displayName', USER_PK)
-        print(f"  ユーザー: {display_name}")
-    else:
-        display_name = USER_PK  # GitHub Actions等ではPKをフォールバックとして使用
-        print(f"  プロフィール取得失敗 → PK={USER_PK} でフォールバック")
-
     e = {}
 
-    # 1日サマリー（歩数・カロリー・HR等）
-    summary = cget(f'/userstats-service/statistics/daily/{display_name}',
-                   params={'fromDate': date_str, 'untilDate': date_str}) or {}
+    # 1日サマリー（usersummary-service 使用）
+    summary = cget(f'/usersummary-service/usersummary/daily/{USER_UUID}',
+                   params={'calendarDate': date_str}) or {}
     active_cal  = summary.get("activeKilocalories", 0) or 0
     total_cal   = summary.get("totalKilocalories", 0) or 0
     bmr_cal     = summary.get("bmrKilocalories", 0) or 0
     resting_hr  = summary.get("restingHeartRate", 0) or 0
     min_hr      = summary.get("minHeartRate", 0) or 0
-    avg_hr      = summary.get("averageHeartRate", 0) or 0
+    avg_hr      = summary.get("minAvgHeartRate", 0) or 0
     max_hr      = summary.get("maxHeartRate", 0) or 0
     steps       = summary.get("totalSteps", 0) or 0
     distance_m  = summary.get("totalDistanceMeters", 0) or 0
@@ -168,95 +170,62 @@ def fetch_day_with_cookies(target_date) -> dict:
     floors_down = summary.get("floorsDescended", 0) or 0
     mod_minutes = summary.get("moderateIntensityMinutes", 0) or 0
     vig_minutes = summary.get("vigorousIntensityMinutes", 0) or 0
+    stress_avg  = summary.get("averageStressLevel", 0) or 0
+    stress_max  = summary.get("maxStressLevel", 0) or 0
+    bb_morning  = summary.get("bodyBatteryAtWakeTime")
+    bb_highest  = summary.get("bodyBatteryHighestValue")
+    bb_lowest   = summary.get("bodyBatteryLowestValue")
+    bb_recent   = summary.get("bodyBatteryMostRecentValue")
+    spo2_avg    = summary.get("averageSpo2", 0) or 0
+    spo2_min    = summary.get("lowestSpo2", 0) or 0
 
-    # Body Battery
-    bb_data = cget('/wellness-service/wellness/bodyBattery/scored',
-                   params={'startDate': date_str, 'endDate': date_next}) or []
-    bb_morning = bb_evening = bb_min_val = bb_max_val = None
-    if bb_data:
-        try:
-            vals = [d[1] for d in bb_data if d[1] is not None]
-            if vals:
-                bb_morning  = vals[0];  bb_evening = vals[-1]
-                bb_min_val  = min(vals); bb_max_val  = max(vals)
-        except Exception:
-            pass
+    if stress_avg:
+        if   stress_avg < 26: stress_level = "低"
+        elif stress_avg < 51: stress_level = "やや低"
+        elif stress_avg < 76: stress_level = "中"
+        elif stress_avg < 86: stress_level = "やや高"
+        else:                 stress_level = "高"
+    else:
+        stress_level = "不明"
 
     # 睡眠
     sleep_score = sleep_hours = deep_sleep = light_sleep = rem_sleep = awake_mins = 0
-    sd = cget(f'/wellness-service/wellness/dailySleepData/{display_name}',
-              params={'date': date_str, 'nonSleepBufferMinutes': '60'}) or {}
+    sd = cget(f'/wellness-service/wellness/dailySleepData/{USER_UUID}',
+              params={'date': date_str}) or {}
     if sd:
         dto = sd.get("dailySleepDTO", {}) or {}
-        sleep_score = dto.get("sleepScores", {}).get("overall", {}).get("value", 0) or dto.get("sleepScore", 0) or 0
+        sleep_score = (dto.get("sleepScores") or {}).get("overall", {}).get("value", 0) or dto.get("sleepScore", 0) or 0
         sleep_hours = round((dto.get("sleepTimeSeconds", 0) or 0) / 3600, 1)
         deep_sleep  = round((dto.get("deepSleepSeconds", 0) or 0) / 3600, 1)
         light_sleep = round((dto.get("lightSleepSeconds", 0) or 0) / 3600, 1)
         rem_sleep   = round((dto.get("remSleepSeconds", 0) or 0) / 3600, 1)
         awake_mins  = round((dto.get("awakeSleepSeconds", 0) or 0) / 60, 0)
 
-    # ストレス
-    stress_level = "不明"; stress_avg = stress_max = 0
-    strd = cget(f'/wellness-service/wellness/dailyStress/{date_str}') or {}
-    if strd:
-        stress_avg = strd.get("avgStressLevel", 0) or 0
-        stress_max = strd.get("maxStressLevel", 0) or 0
-        if   stress_avg < 26: stress_level = "低"
-        elif stress_avg < 51: stress_level = "やや低"
-        elif stress_avg < 76: stress_level = "中"
-        elif stress_avg < 86: stress_level = "やや高"
-        else:                 stress_level = "高"
-
-    # SpO2
-    spo2_avg = spo2_min = 0
-    sp = cget(f'/wellness-service/wellness/daily/spo2/{date_str}') or {}
-    if sp:
-        vals = [r.get("value") for r in (sp.get("spO2HourlyAverages") or []) if r.get("value")]
-        if vals: spo2_avg = round(sum(vals)/len(vals), 1); spo2_min = min(vals)
+    # HRV
+    hrv_weekly_avg = hrv_last_night = 0; hrv_status = None
+    hd = cget(f'/hrv-service/hrv/{date_str}') or {}
+    if hd:
+        hs = hd.get("hrvSummary", {}) or {}
+        hrv_weekly_avg = hs.get("weeklyAvg", 0) or 0
+        hrv_last_night = hs.get("lastNight", 0) or 0
+        hrv_status     = hs.get("status")
 
     # 呼吸数
     resp_avg = resp_min = resp_max = 0
     rd = cget(f'/wellness-service/wellness/daily/respiration/{date_str}') or {}
     if rd:
-        resp_avg = rd.get("avgWakingRespirationValue", 0) or rd.get("lowestRespirationValue", 0) or 0
+        resp_avg = rd.get("avgWakingRespirationValue", 0) or 0
         resp_min = rd.get("lowestRespirationValue", 0) or 0
         resp_max = rd.get("highestRespirationValue", 0) or 0
 
-    # HRV
-    hrv_weekly_avg = hrv_last_night = 0; hrv_status = None
-    hd = cget(f'/hrv-service/hrv/{date_str}') or {}
-    if hd:
-        s = hd.get("hrvSummary", {}) or {}
-        hrv_weekly_avg = s.get("weeklyAvg", 0) or 0
-        hrv_last_night = s.get("lastNight", 0) or 0
-        hrv_status     = s.get("status")
-
     # VO2 Max
     vo2_max = fitness_age = 0
-    mm = cget(f'/metrics-service/metrics/maxmet/daily/{display_name}',
+    mm = cget(f'/metrics-service/metrics/maxmet/daily/{USER_UUID}',
               params={'fromDate': date_str, 'toDate': date_str}) or {}
     if mm:
         g = mm.get("generic", {}) or {}
         vo2_max     = g.get("vo2MaxPreciseValue", 0) or g.get("vo2MaxValue", 0) or 0
         fitness_age = g.get("fitnessAge", 0) or 0
-
-    # トレーニングステータス
-    training_status_val = None; training_load = training_load_7d = 0
-    ts_data = cget('/metrics-service/metrics/trainingStatus/daily',
-                   params={'fromDate': date_str, 'toDate': date_str}) or {}
-    if ts_data:
-        ts = ts_data.get("trainingStatusDTO", {}) or ts_data
-        training_status_val = ts.get("trainingStatus") or ts.get("latestTrainingStatus")
-        training_load    = ts.get("trainingLoad", 0) or 0
-        training_load_7d = ts.get("7DayTrainingLoad", 0) or ts.get("sevenDayTrainingLoad", 0) or 0
-
-    # 準備度
-    readiness_score = 0; readiness_category = None
-    rn = cget('/metrics-service/metrics/trainingReadiness/list',
-              params={'fromDate': date_str, 'toDate': date_str}) or {}
-    if rn:
-        readiness_score    = rn.get("score", 0) or rn.get("trainingReadinessScore", 0) or 0
-        readiness_category = rn.get("trainingReadinessCategory") or rn.get("category")
 
     # 体組成
     weight_kg = bmi = body_fat_pct = muscle_mass = bone_mass = body_water = visceral_fat = metabolic_age = 0
@@ -277,14 +246,7 @@ def fetch_day_with_cookies(target_date) -> dict:
         visceral_fat = ent.get("visceralFat", 0) or 0
         metabolic_age= ent.get("metabolicAge", 0) or 0
 
-    # 水分
-    water_intake_ml = water_goal_ml = 0
-    hyd = cget(f'/wellness-service/wellness/hydration/allData/{date_str}') or {}
-    if hyd:
-        water_intake_ml = hyd.get("totalIntakeInML", 0) or hyd.get("valueInML", 0) or 0
-        water_goal_ml   = hyd.get("goalInML", 0) or 0
-
-    print(f"  歩数:{steps} 距離:{distance_km}km 消費:{active_cal}kcal BB:{bb_morning}→{bb_evening} 睡眠:{sleep_score}点 VO2:{vo2_max}")
+    print(f"  歩数:{steps} 距離:{distance_km}km 消費:{active_cal}kcal BB:{bb_morning}→{bb_recent} 睡眠:{sleep_score}点 VO2:{vo2_max}")
 
     if steps:           e["steps"]        = steps
     if distance_km:     e["distanceKm"]   = distance_km
@@ -303,9 +265,9 @@ def fetch_day_with_cookies(target_date) -> dict:
     if hrv_last_night:  e["hrvLastNight"] = hrv_last_night
     if hrv_status:      e["hrvStatus"]    = hrv_status
     if bb_morning is not None: e["bbMorning"] = bb_morning
-    if bb_evening is not None: e["bbEvening"] = bb_evening
-    if bb_min_val is not None: e["bbMin"]     = bb_min_val
-    if bb_max_val is not None: e["bbMax"]     = bb_max_val
+    if bb_recent  is not None: e["bbEvening"] = bb_recent
+    if bb_lowest  is not None: e["bbMin"]     = bb_lowest
+    if bb_highest is not None: e["bbMax"]     = bb_highest
     if sleep_score:     e["sleepScore"]   = sleep_score
     if sleep_hours:     e["sleepHours"]   = sleep_hours
     if deep_sleep:      e["deepSleep"]    = deep_sleep
@@ -322,11 +284,6 @@ def fetch_day_with_cookies(target_date) -> dict:
     if resp_max:        e["respirationMax"] = resp_max
     if vo2_max:         e["vo2Max"]       = vo2_max
     if fitness_age:     e["fitnessAge"]   = fitness_age
-    if training_status_val: e["trainingStatus"] = training_status_val
-    if training_load:   e["trainingLoad"] = training_load
-    if training_load_7d: e["trainingLoad7d"] = training_load_7d
-    if readiness_score: e["readiness"]    = readiness_score
-    if readiness_category: e["readinessCategory"] = readiness_category
     if weight_kg:       e["weightKg"]     = weight_kg
     if bmi:             e["bmi"]          = bmi
     if body_fat_pct:    e["bodyFat"]      = body_fat_pct
@@ -335,8 +292,6 @@ def fetch_day_with_cookies(target_date) -> dict:
     if body_water:      e["bodyWater"]    = body_water
     if visceral_fat:    e["visceralFat"]  = visceral_fat
     if metabolic_age:   e["metabolicAge"] = metabolic_age
-    if water_intake_ml: e["waterMl"]      = water_intake_ml
-    if water_goal_ml:   e["waterGoalMl"]  = water_goal_ml
 
     return e
 
