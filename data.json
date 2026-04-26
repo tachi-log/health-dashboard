@@ -60,7 +60,7 @@
     "deepSleep": 2.2,
     "lightSleep": 3.1,
     "remSleep": 1.2,
-    "stress": "やや低",
+    "stress": "不明",
     "stressAvg": 30,
     "stressMax": 95,
     "spo2": 97.0,
@@ -68,5 +68,8 @@
     "respiration": 15.0,
     "respirationMin": 7.0,
     "respirationMax": 22.0
+  },
+  "2026-04-26": {
+    "stress": "不明"
   }
 }
