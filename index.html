@@ -469,6 +469,50 @@
     .streak-day.done { background: #14532d; color: #4ade80; }
     .streak-day.miss { background: #2a2d3e; color: #4a5068; }
     .streak-day.today { background: #1e2d50; color: #7fa4f0; border: 1px solid #7fa4f0; }
+
+    /* ===== 東海道五十三次 ===== */
+    .td-hero {
+      background: linear-gradient(135deg, #0f1f14 0%, #121e2a 100%);
+      border: 1px solid #1e3a24;
+      border-radius: 14px;
+      padding: 18px 16px 14px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .td-hero-emoji { font-size: 1.8rem; margin-bottom: 2px; }
+    .td-hero-route { font-size: .72rem; color: #4ade80; font-weight: 700; letter-spacing: .05em; }
+    .td-hero-station { font-size: 1.55rem; font-weight: 800; color: #fff; margin: 4px 0 2px; line-height: 1.2; }
+    .td-hero-next { font-size: .78rem; color: #8892a4; }
+    .td-prog-outer { position: relative; height: 22px; margin: 12px 0 6px; }
+    .td-prog-track { background: #2a2d3e; border-radius: 10px; height: 12px; position: absolute; top: 5px; left: 0; right: 0; overflow: hidden; }
+    .td-prog-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80); border-radius: 10px; transition: width 1s ease; }
+    .td-prog-walker { position: absolute; top: 0; font-size: 1.1rem; transition: left 1s ease; line-height: 1; }
+    .td-hero-km { font-size: .72rem; color: #6a7090; }
+    .td-mult-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .td-mult-card { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 10px; padding: 10px 6px; text-align: center; }
+    .td-mult-icon { font-size: 1rem; }
+    .td-mult-label { font-size: .63rem; color: #6a7090; margin: 2px 0; }
+    .td-mult-val { font-size: 1.05rem; font-weight: 700; }
+    .td-mult-val.bonus { color: #4ade80; }
+    .td-mult-val.penalty { color: #f97316; }
+    .td-mult-val.neutral { color: #a0aec0; }
+    .td-mult-sub { font-size: .6rem; color: #6a7090; }
+    .td-road { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+    .td-road-title { font-size: .72rem; color: #6a7090; font-weight: 700; margin-bottom: 8px; letter-spacing: .05em; text-transform: uppercase; }
+    .td-srow { display: flex; align-items: center; gap: 8px; padding: 6px 4px; }
+    .td-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .td-dot.done { background: #22c55e; }
+    .td-dot.ahead { background: #2a2d3e; border: 1px solid #3a3d4e; }
+    .td-snum { font-size: .6rem; color: #4a5068; width: 18px; text-align: right; flex-shrink: 0; }
+    .td-sname { flex: 1; font-size: .82rem; }
+    .td-sname.done { color: #5a6080; }
+    .td-sname.ahead { color: #4a5068; }
+    .td-skm { font-size: .65rem; color: #4a5068; }
+    .td-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .td-stat { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 10px; padding: 10px; text-align: center; }
+    .td-stat-val { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .td-stat-unit { font-size: .72rem; color: #8892a4; }
+    .td-stat-label { font-size: .65rem; color: #6a7090; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -496,6 +540,7 @@
     <div class="tab" onclick="showPage('calendar',this)">カレンダー</div>
     <div class="tab" onclick="showPage('weekly',this)">週次</div>
     <div class="tab" onclick="showPage('input',this)">入力</div>
+    <div class="tab" onclick="showPage('tokaido',this)">🚶旅</div>
     <div class="tab" onclick="showPage('settings',this)">設定</div>
   </div>
 </div>
@@ -1026,6 +1071,40 @@
 
   </div><!-- /page-settings -->
 
+  <!-- ===== 東海道五十三次 PAGE ===== -->
+  <div class="page" id="page-tokaido">
+
+    <div class="td-hero">
+      <div id="td-hero-content"></div>
+      <div class="td-prog-outer">
+        <div class="td-prog-track"><div class="td-prog-fill" id="td-prog-fill" style="width:0%"></div></div>
+        <div class="td-prog-walker" id="td-prog-walker" style="left:0">🚶</div>
+      </div>
+      <div class="td-hero-km" id="td-km-label"></div>
+    </div>
+
+    <div class="section-title">今日の歩幅ボーナス</div>
+    <div class="td-mult-grid">
+      <div class="td-mult-card" id="td-mult-sleep"></div>
+      <div class="td-mult-card" id="td-mult-hr"></div>
+      <div class="td-mult-card" id="td-mult-step"></div>
+    </div>
+
+    <div class="section-title">街道マップ</div>
+    <div class="td-road">
+      <div class="td-road-title">五十三次の現在地</div>
+      <div id="td-road-list"></div>
+    </div>
+
+    <div class="section-title">旅の記録</div>
+    <div class="td-stats">
+      <div class="td-stat" id="td-stat-total"></div>
+      <div class="td-stat" id="td-stat-days"></div>
+      <div class="td-stat" id="td-stat-eta"></div>
+    </div>
+
+  </div><!-- /page-tokaido -->
+
 </main>
 
 <script>
@@ -1107,6 +1186,7 @@ function showPage(id, el) {
   if (id === 'weekly') renderWeekly();
   if (id === 'input') renderInputForm();
   if (id === 'calendar') renderCalendar();
+  if (id === 'tokaido') renderTokaido();
 }
 
 /* ============================================================
@@ -1767,6 +1847,218 @@ function showToast(msg) {
 function el(id) { return document.getElementById(id); }
 function setVal(id, val) { const e = el(id); if (e) e.textContent = val; }
 function numVal(id) { const v = parseFloat(el(id)?.value); return isNaN(v) ? null : v; }
+
+/* ============================================================
+   東海道五十三次チャレンジ
+   ============================================================ */
+const TOKAIDO = [
+  { num: 0,  name: '江戸（日本橋）',  km: 0,   emoji: '🏯' },
+  { num: 1,  name: '品川宿',           km: 8,   emoji: '🌊' },
+  { num: 2,  name: '川崎宿',           km: 15,  emoji: '⛩️' },
+  { num: 3,  name: '神奈川宿',         km: 26,  emoji: '⛵' },
+  { num: 4,  name: '保土ヶ谷宿',       km: 32,  emoji: '🌿' },
+  { num: 5,  name: '戸塚宿',           km: 40,  emoji: '🌾' },
+  { num: 6,  name: '藤沢宿',           km: 48,  emoji: '⛩️' },
+  { num: 7,  name: '平塚宿',           km: 62,  emoji: '🌸' },
+  { num: 8,  name: '大磯宿',           km: 68,  emoji: '🌺' },
+  { num: 9,  name: '小田原宿',         km: 83,  emoji: '🏯' },
+  { num: 10, name: '箱根宿',           km: 96,  emoji: '🗻' },
+  { num: 11, name: '三島宿',           km: 108, emoji: '⛩️' },
+  { num: 12, name: '沼津宿',           km: 112, emoji: '🌊' },
+  { num: 13, name: '原宿',             km: 120, emoji: '🗻' },
+  { num: 14, name: '吉原宿',           km: 127, emoji: '🌿' },
+  { num: 15, name: '蒲原宿',           km: 135, emoji: '🎋' },
+  { num: 16, name: '由比宿',           km: 140, emoji: '🌊' },
+  { num: 17, name: '興津宿',           km: 148, emoji: '🌊' },
+  { num: 18, name: '江尻宿',           km: 153, emoji: '⛵' },
+  { num: 19, name: '府中宿',           km: 163, emoji: '🏯' },
+  { num: 20, name: '丸子宿',           km: 168, emoji: '🍵' },
+  { num: 21, name: '岡部宿',           km: 177, emoji: '🌿' },
+  { num: 22, name: '藤枝宿',           km: 183, emoji: '🌸' },
+  { num: 23, name: '島田宿',           km: 191, emoji: '🌊' },
+  { num: 24, name: '金谷宿',           km: 196, emoji: '⛰️' },
+  { num: 25, name: '日坂宿',           km: 201, emoji: '🌿' },
+  { num: 26, name: '掛川宿',           km: 211, emoji: '🏯' },
+  { num: 27, name: '袋井宿',           km: 219, emoji: '🌾' },
+  { num: 28, name: '見附宿',           km: 227, emoji: '🌿' },
+  { num: 29, name: '浜松宿',           km: 238, emoji: '🪁' },
+  { num: 30, name: '舞坂宿',           km: 248, emoji: '🌊' },
+  { num: 31, name: '新居宿',           km: 253, emoji: '⛩️' },
+  { num: 32, name: '白須賀宿',         km: 260, emoji: '🌊' },
+  { num: 33, name: '二川宿',           km: 267, emoji: '🌿' },
+  { num: 34, name: '吉田宿',           km: 274, emoji: '🏯' },
+  { num: 35, name: '御油宿',           km: 283, emoji: '🌿' },
+  { num: 36, name: '赤坂宿',           km: 286, emoji: '🍂' },
+  { num: 37, name: '藤川宿',           km: 294, emoji: '🌸' },
+  { num: 38, name: '岡崎宿',           km: 302, emoji: '🏯' },
+  { num: 39, name: '池鯉鮒宿',         km: 313, emoji: '🐟' },
+  { num: 40, name: '鳴海宿',           km: 322, emoji: '🌿' },
+  { num: 41, name: '宮宿',             km: 332, emoji: '⛩️' },
+  { num: 42, name: '桑名宿',           km: 357, emoji: '⛵' },
+  { num: 43, name: '四日市宿',         km: 368, emoji: '🌊' },
+  { num: 44, name: '石薬師宿',         km: 377, emoji: '⛩️' },
+  { num: 45, name: '庄野宿',           km: 382, emoji: '🌾' },
+  { num: 46, name: '亀山宿',           km: 391, emoji: '🏯' },
+  { num: 47, name: '関宿',             km: 397, emoji: '🏮' },
+  { num: 48, name: '坂下宿',           km: 404, emoji: '⛰️' },
+  { num: 49, name: '土山宿',           km: 415, emoji: '⛰️' },
+  { num: 50, name: '水口宿',           km: 424, emoji: '🌿' },
+  { num: 51, name: '石部宿',           km: 434, emoji: '🌿' },
+  { num: 52, name: '草津宿',           km: 445, emoji: '🌿' },
+  { num: 53, name: '大津宿',           km: 454, emoji: '🌊' },
+  { num: 54, name: '京都（三条大橋）', km: 492, emoji: '⛩️' },
+];
+
+function sleepMult(score) {
+  if (!score) return 1.0;
+  if (score >= 85) return 1.3;
+  if (score >= 70) return 1.0;
+  if (score >= 55) return 0.85;
+  return 0.7;
+}
+
+function hrMult(hr) {
+  if (!hr) return 1.0;
+  if (hr < 60) return 1.2;
+  if (hr < 70) return 1.0;
+  if (hr < 80) return 0.9;
+  return 0.8;
+}
+
+function calcDayKm(d) {
+  const steps = d.steps || 0;
+  if (!steps) return 0;
+  return steps * 0.9 * sleepMult(d.sleepScore) * hrMult(d.restingHr) / 1000;
+}
+
+function calcJourneyKm() {
+  let total = 0;
+  Object.values(getStore()).forEach(d => { total += calcDayKm(d); });
+  return Math.min(total, 492);
+}
+
+function renderTokaido() {
+  const store = getStore();
+  const today = getTodayData(currentDate);
+  const totalKm = calcJourneyKm();
+  const pctOverall = Math.min(100, totalKm / 492 * 100);
+
+  // 現在の区間を特定
+  let fromIdx = 0;
+  for (let i = TOKAIDO.length - 1; i >= 0; i--) {
+    if (totalKm >= TOKAIDO[i].km) { fromIdx = i; break; }
+  }
+  const toIdx = Math.min(fromIdx + 1, TOKAIDO.length - 1);
+  const fromSt = TOKAIDO[fromIdx];
+  const toSt   = TOKAIDO[toIdx];
+  const kmToNext = fromIdx < TOKAIDO.length - 1 ? Math.max(0, toSt.km - totalKm) : 0;
+
+  // 今日の倍率
+  const sm = sleepMult(today.sleepScore);
+  const hm = hrMult(today.restingHr);
+  const combined = sm * hm;
+  const stepCm = Math.round(90 * combined);
+
+  // 歩いた日数
+  const daysWalked = Object.values(store).filter(d => (d.steps || 0) > 0).length;
+
+  // ヒーローカード
+  const heroEl = el('td-hero-content');
+  if (totalKm >= 492) {
+    heroEl.innerHTML = `
+      <div style="font-size:2rem;margin-bottom:4px">🎊</div>
+      <div style="font-size:.72rem;color:#ffd700;font-weight:700">ゴール達成！</div>
+      <div class="td-hero-station">京都 三条大橋</div>
+      <div class="td-hero-next">江戸から492kmの旅を完走！</div>`;
+  } else if (totalKm === 0) {
+    heroEl.innerHTML = `
+      <div class="td-hero-emoji">🏯</div>
+      <div class="td-hero-route">旅の始まり</div>
+      <div class="td-hero-station">江戸 日本橋</div>
+      <div class="td-hero-next">歩き始めて旅をスタートしよう！</div>`;
+  } else {
+    const segKm   = toSt.km - fromSt.km;
+    const segDone = totalKm - fromSt.km;
+    const segPct  = Math.round(segDone / segKm * 100);
+    heroEl.innerHTML = `
+      <div class="td-hero-emoji">${fromSt.emoji}</div>
+      <div class="td-hero-route">${fromSt.name} → ${toSt.name}</div>
+      <div class="td-hero-station">${toSt.name} まで ${kmToNext.toFixed(1)}km</div>
+      <div class="td-hero-next">この区間 ${segPct}% 進行中（${segDone.toFixed(1)} / ${segKm}km）</div>`;
+  }
+
+  // プログレスバー
+  el('td-prog-fill').style.width = pctOverall + '%';
+  el('td-prog-walker').style.left = `calc(${Math.min(pctOverall, 95)}% - 8px)`;
+  el('td-km-label').textContent = `${totalKm.toFixed(1)} km 踏破 / 492 km（${pctOverall.toFixed(1)}%）`;
+
+  // 倍率カード
+  const smLabel = sm >= 1.3 ? '熟睡ボーナス' : sm >= 1.0 ? '標準' : sm >= 0.85 ? '疲労あり' : '寝不足';
+  const hmLabel = hm >= 1.2 ? '鍛えた心臓' : hm >= 1.0 ? '標準' : hm >= 0.9 ? 'やや高め' : '要注意';
+  const smC = sm > 1.0 ? 'bonus' : sm < 1.0 ? 'penalty' : 'neutral';
+  const hmC = hm > 1.0 ? 'bonus' : hm < 1.0 ? 'penalty' : 'neutral';
+  const cC  = combined > 1.0 ? 'bonus' : combined < 1.0 ? 'penalty' : 'neutral';
+
+  el('td-mult-sleep').innerHTML = `
+    <div class="td-mult-icon">😴</div>
+    <div class="td-mult-label">睡眠${today.sleepScore ? ' ' + today.sleepScore + '点' : ''}</div>
+    <div class="td-mult-val ${smC}">×${sm.toFixed(2)}</div>
+    <div class="td-mult-sub">${smLabel}</div>`;
+  el('td-mult-hr').innerHTML = `
+    <div class="td-mult-icon">❤️</div>
+    <div class="td-mult-label">心拍${today.restingHr ? ' ' + today.restingHr + 'bpm' : ''}</div>
+    <div class="td-mult-val ${hmC}">×${hm.toFixed(2)}</div>
+    <div class="td-mult-sub">${hmLabel}</div>`;
+  el('td-mult-step').innerHTML = `
+    <div class="td-mult-icon">👣</div>
+    <div class="td-mult-label">今日の1歩</div>
+    <div class="td-mult-val ${cC}">${stepCm}cm</div>
+    <div class="td-mult-sub">基本90cm × ${combined.toFixed(2)}</div>`;
+
+  // 街道マップ（前後2駅ずつ表示）
+  const roadEl = el('td-road-list');
+  roadEl.innerHTML = '';
+  const showFrom = Math.max(0, fromIdx - 2);
+  const showTo   = Math.min(TOKAIDO.length - 1, toIdx + 2);
+  let nowInserted = false;
+
+  for (let i = showFrom; i <= showTo; i++) {
+    const st = TOKAIDO[i];
+    const passed = totalKm > st.km;
+
+    // 現在地マーカーを fromIdx と toIdx の間に挿入
+    if (!nowInserted && i === toIdx && totalKm > fromSt.km && totalKm < toSt.km) {
+      nowInserted = true;
+      const m = document.createElement('div');
+      m.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;background:rgba(127,164,240,.09);border-radius:8px;border:1px solid rgba(127,164,240,.2);margin:2px 0;';
+      m.innerHTML = `
+        <div style="width:8px;height:8px;border-radius:50%;background:#7fa4f0;box-shadow:0 0 6px rgba(127,164,240,.8);flex-shrink:0;"></div>
+        <div style="font-size:.6rem;color:#4a5068;width:18px;flex-shrink:0;"></div>
+        <div style="flex:1;font-size:.85rem;color:#7fa4f0;font-weight:700;">🚶 現在地</div>
+        <div style="font-size:.65rem;color:#7fa4f0;">${totalKm.toFixed(1)}km</div>`;
+      roadEl.appendChild(m);
+    }
+
+    const numStr = st.num === 0 ? '発' : st.num === 54 ? '着' : String(st.num);
+    const row = document.createElement('div');
+    row.className = 'td-srow';
+    row.innerHTML = `
+      <div class="td-dot ${passed ? 'done' : 'ahead'}"></div>
+      <div class="td-snum">${numStr}</div>
+      <div class="td-sname ${passed ? 'done' : 'ahead'}">${st.emoji} ${st.name}</div>
+      <div class="td-skm">${st.km}km</div>`;
+    roadEl.appendChild(row);
+  }
+
+  // 旅の記録
+  const remaining = 492 - totalKm;
+  const avgDailyKm = daysWalked > 0 ? totalKm / daysWalked : 0;
+  const daysToGoal = avgDailyKm > 0 ? Math.ceil(remaining / avgDailyKm) : null;
+
+  el('td-stat-total').innerHTML = `<div class="td-stat-val">${totalKm.toFixed(1)}<span class="td-stat-unit">km</span></div><div class="td-stat-label">累積距離</div>`;
+  el('td-stat-days').innerHTML  = `<div class="td-stat-val">${daysWalked}<span class="td-stat-unit">日</span></div><div class="td-stat-label">歩いた日数</div>`;
+  el('td-stat-eta').innerHTML   = `<div class="td-stat-val">${daysToGoal != null ? daysToGoal : '—'}<span class="td-stat-unit">${daysToGoal != null ? '日' : ''}</span></div><div class="td-stat-label">到着まで(推定)</div>`;
+}
 
 /* ============================================================
    INIT (demo data if empty)
