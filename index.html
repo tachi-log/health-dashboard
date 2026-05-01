@@ -1932,8 +1932,9 @@ function calcDayKm(d) {
 }
 
 function calcJourneyKm() {
+  // Garmin実データのみ使用（デモデータや手入力はデバイス間で異なるため除外）
   let total = 0;
-  Object.values(getStore()).forEach(d => { total += calcDayKm(d); });
+  Object.values(garminStore).forEach(d => { total += calcDayKm(d); });
   return Math.min(total, 492);
 }
 
