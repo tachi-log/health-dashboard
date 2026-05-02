@@ -82,7 +82,7 @@
     "stress": "不明"
   },
   "2026-05-01": {
-    "stress": "低",
+    "stress": "不明",
     "steps": 8151,
     "distanceKm": 6.52,
     "activeCal": 125.0,
@@ -145,5 +145,8 @@
     "respiration": 15.0,
     "respirationMin": 8.0,
     "respirationMax": 22.0
+  },
+  "2026-05-02": {
+    "stress": "不明"
   }
 }
