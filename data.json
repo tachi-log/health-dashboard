@@ -147,7 +147,7 @@
     "respirationMax": 22.0
   },
   "2026-05-02": {
-    "stress": "やや低",
+    "stress": "不明",
     "steps": 1931,
     "distanceKm": 1.62,
     "activeCal": 34.0,
@@ -177,5 +177,8 @@
     "respiration": 15.0,
     "respirationMin": 7.0,
     "respirationMax": 22.0
+  },
+  "2026-05-03": {
+    "stress": "不明"
   }
 }
